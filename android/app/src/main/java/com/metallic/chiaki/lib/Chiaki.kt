@@ -93,6 +93,7 @@ private class ChiakiNative
 		@JvmStatic external fun sessionSetSurface(ptr: Long, surface: Surface?)
 		@JvmStatic external fun sessionSetControllerState(ptr: Long, controllerState: ControllerState)
 		@JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
+		@JvmStatic external fun sessionStats(ptr: Long): LongArray
 		@JvmStatic external fun discoveryServiceCreate(result: CreateResult, options: DiscoveryServiceOptions, javaService: DiscoveryService)
 		@JvmStatic external fun discoveryServiceFree(ptr: Long)
 		@JvmStatic external fun discoveryServiceWakeup(ptr: Long, host: String, userCredential: Long, ps5: Boolean)
@@ -339,6 +340,8 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 			throw CreateError(errorCode)
 		nativePtr = result.ptr
 	}
+
+	fun stats(): LongArray? = if(nativePtr == 0L) null else ChiakiNative.sessionStats(nativePtr)
 
 	fun start() = ErrorCode(ChiakiNative.sessionStart(nativePtr))
 	fun stop() = ErrorCode(ChiakiNative.sessionStop(nativePtr))

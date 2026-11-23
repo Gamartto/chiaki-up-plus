@@ -33,6 +33,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.motionEnabledKey -> preferences.motionEnabled
 		preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled
 		preferences.psComboEnabledKey -> preferences.psComboEnabled
+		preferences.statsAtBottomKey -> preferences.statsAtBottom
 		else -> defValue
 	}
 
@@ -46,6 +47,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.motionEnabledKey -> preferences.motionEnabled = value
 			preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled = value
 			preferences.psComboEnabledKey -> preferences.psComboEnabled = value
+			preferences.statsAtBottomKey -> preferences.statsAtBottom = value
 		}
 	}
 

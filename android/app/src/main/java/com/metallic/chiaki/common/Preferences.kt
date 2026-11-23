@@ -98,6 +98,16 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(swapCrossMoonKey, false)
 		set(value) { sharedPreferences.edit().putBoolean(swapCrossMoonKey, value).apply() }
 
+	val statsAtBottomKey get() = resources.getString(R.string.preferences_stats_at_bottom_key)
+	var statsAtBottom
+		get() = sharedPreferences.getBoolean(statsAtBottomKey, false)
+		set(value) { sharedPreferences.edit().putBoolean(statsAtBottomKey, value).apply() }
+
+	val statsEnabledKey get() = resources.getString(R.string.preferences_stats_enabled_key)
+	var statsEnabled
+		get() = sharedPreferences.getBoolean(statsEnabledKey, false)
+		set(value) { sharedPreferences.edit().putBoolean(statsEnabledKey, value).apply() }
+
 	val psComboEnabledKey get() = resources.getString(R.string.preferences_ps_combo_enabled_key)
 	var psComboEnabled
 		get() = sharedPreferences.getBoolean(psComboEnabledKey, true)

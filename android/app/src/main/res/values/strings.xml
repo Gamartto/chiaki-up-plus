@@ -87,8 +87,11 @@
     <string name="preferences_codec_title_h265">H265 (PS5 only)</string>
     <string name="preferences_swap_cross_moon_title">Swap Cross/Moon and Box/Pyramid Buttons</string>
     <string name="preferences_swap_cross_moon_summary">Swap face buttons if default mapping is incorrect (e.g. for 8BitDo controllers)</string>
-    <string name="preferences_ps_combo_title">Start + Select Sends PS</string>
-    <string name="preferences_ps_combo_summary">Hold Start and Select together to press the PS button. Options and Share still work on their own.</string>
+    <string name="preferences_ps_combo_title">Controller Shortcuts</string>
+    <string name="preferences_ps_combo_summary">Start + Select presses the PS button. L1 + R1 + Start shows the stream statistics. Options, Share, L1 and R1 still work on their own.</string>
+    <string name="stream_stats_label">Stats</string>
+    <string name="preferences_stats_at_bottom_title">Stats at the bottom</string>
+    <string name="preferences_stats_at_bottom_summary">Show the stream statistics at the bottom of the screen instead of the top.</string>
     <string name="preferences_rumble_enabled_title">Rumble</string>
     <string name="preferences_rumble_enabled_summary">Use phone vibration motor for rumble</string>
     <string name="preferences_motion_enabled_title">Motion</string>
@@ -117,6 +120,8 @@
     <string name="preferences_export_settings_key">export_settings</string>
     <string name="preferences_swap_cross_moon_key">swap_cross_moon</string>
     <string name="preferences_ps_combo_enabled_key">ps_combo_enabled</string>
+    <string name="preferences_stats_enabled_key">stats_enabled</string>
+    <string name="preferences_stats_at_bottom_key">stats_at_bottom</string>
     <string name="preferences_resolution_key">stream_resolution</string>
     <string name="preferences_fps_key">stream_fps</string>
     <string name="preferences_bitrate_key">stream_bitrate</string>

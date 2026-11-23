@@ -23,6 +23,7 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
 	decoder->target_height = target_height;
 	decoder->target_codec = codec;
 	decoder->shutdown_output = false;
+	decoder->stats_bytes = 0;
 	return chiaki_mutex_init(&decoder->codec_mutex, false);
 }
 
@@ -143,6 +144,7 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, vo
 {
 	bool r = true;
 	AndroidChiakiVideoDecoder *decoder = user;
+	decoder->stats_bytes += buf_size;
 	chiaki_mutex_lock(&decoder->codec_mutex);
 
 	if(!decoder->codec)
@@ -218,4 +220,8 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
 	CHIAKI_LOGI(decoder->log, "Video Decoder Output Thread exiting");
 
 	return NULL;
+}
+uint64_t android_chiaki_video_decoder_get_bytes(AndroidChiakiVideoDecoder *decoder)
+{
+	return decoder->stats_bytes;
 }

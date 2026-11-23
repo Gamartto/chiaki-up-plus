@@ -23,11 +23,17 @@ typedef struct android_chiaki_video_decoder_t
 	int32_t target_width;
 	int32_t target_height;
 	ChiakiCodec target_codec;
+	// Compressed bytes handed to the decoder, for the effective bitrate readout.
+	// Frame rate is deliberately not measured: the console always streams at the
+	// configured rate, duplicating frames when the game renders slower, so any
+	// client-side counter reports the stream rate and not the game's.
+	volatile uint64_t stats_bytes;
 } AndroidChiakiVideoDecoder;
 
 ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *decoder, ChiakiLog *log, int32_t target_width, int32_t target_height, ChiakiCodec codec);
 void android_chiaki_video_decoder_fini(AndroidChiakiVideoDecoder *decoder);
 void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder, JNIEnv *env, jobject surface);
 bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, void *user);
+uint64_t android_chiaki_video_decoder_get_bytes(AndroidChiakiVideoDecoder *decoder);
 
 #endif

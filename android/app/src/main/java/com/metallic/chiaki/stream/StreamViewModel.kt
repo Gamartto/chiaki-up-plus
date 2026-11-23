@@ -26,6 +26,9 @@ class StreamViewModel(val application: Application, val connectInfo: ConnectInfo
 	private var _touchpadOnlyEnabled = MutableLiveData<Boolean>(preferences.touchpadOnlyEnabled)
 	val touchpadOnlyEnabled: LiveData<Boolean> get() = _touchpadOnlyEnabled
 
+	private var _statsEnabled = MutableLiveData<Boolean>(preferences.statsEnabled)
+	val statsEnabled: LiveData<Boolean> get() = _statsEnabled
+
 	override fun onCleared()
 	{
 		super.onCleared()
@@ -42,5 +45,11 @@ class StreamViewModel(val application: Application, val connectInfo: ConnectInfo
 	{
 		preferences.touchpadOnlyEnabled = enabled
 		_touchpadOnlyEnabled.value = enabled
+	}
+
+	fun setStatsEnabled(enabled: Boolean)
+	{
+		preferences.statsEnabled = enabled
+		_statsEnabled.value = enabled
 	}
 }

@@ -64,6 +64,9 @@ class StreamInput(val context: Context, val preferences: Preferences)
 	private val mainHandler = Handler(Looper.getMainLooper())
 	private var psReleaseRunnable: Runnable? = null
 
+	// Wired by the activity to the statistics overlay.
+	var statsToggleCallback: (() -> Unit)? = null
+
 	private fun sendPsTap()
 	{
 		keyControllerState.buttons = keyControllerState.buttons or ControllerState.BUTTON_PS
@@ -77,15 +80,24 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		mainHandler.postDelayed(release, PS_TAP_MS)
 	}
 
-	// Start + Select combo → one PS tap. The individual Options/Share presses are
-	// held back for COMBO_WINDOW_MS so a normal single press still reaches the console.
+	// Start + Select → one PS tap. Start and Select are held back for
+	// COMBO_WINDOW_MS so a normal single press still reaches the console.
+	//
+	// L1 + R1 + Start → statistics overlay. Start rides the same hold-back; L1
+	// and R1 go out at once, because delaying two buttons used constantly during
+	// play would be felt. The price of the shortcut is the brief L1+R1 tap the
+	// game sees before the overlay opens.
 	private var startDown = false
 	private var selectDown = false
+	private var l1Down = false
+	private var r1Down = false
 	private var comboActive = false
 	private var startSent = false
 	private var selectSent = false
 	private var startPendingRunnable: Runnable? = null
 	private var selectPendingRunnable: Runnable? = null
+	private var startTapRunnable: Runnable? = null
+	private var selectTapRunnable: Runnable? = null
 
 	private fun setKeyButton(mask: UInt, pressed: Boolean)
 	{
@@ -104,54 +116,124 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		selectPendingRunnable = null
 	}
 
-	private fun handleStartSelectKey(event: KeyEvent, isStart: Boolean)
+	// A Start or Select tap that ends inside the hold-back window was never sent,
+	// so it is sent now as a short press: pausing with a quick tap keeps working
+	// even though the window has to be wide enough for three buttons.
+	private fun sendKeyTap(mask: UInt, isStart: Boolean)
 	{
-		val mask = if(isStart) ControllerState.BUTTON_OPTIONS else ControllerState.BUTTON_SHARE
+		setKeyButton(mask, true)
+		val release = Runnable { setKeyButton(mask, false) }
+		if(isStart)
+		{
+			startTapRunnable?.let { mainHandler.removeCallbacks(it) }
+			startTapRunnable = release
+		}
+		else
+		{
+			selectTapRunnable?.let { mainHandler.removeCallbacks(it) }
+			selectTapRunnable = release
+		}
+		mainHandler.postDelayed(release, KEY_TAP_MS)
+	}
+
+	private fun comboMask(keyCode: Int): UInt = when(keyCode)
+	{
+		KeyEvent.KEYCODE_BUTTON_START -> ControllerState.BUTTON_OPTIONS
+		KeyEvent.KEYCODE_BUTTON_SELECT -> ControllerState.BUTTON_SHARE
+		KeyEvent.KEYCODE_BUTTON_L1 -> ControllerState.BUTTON_L1
+		else -> ControllerState.BUTTON_R1
+	}
+
+	// Once a combo fires nothing that was already sent may stay pressed: Options
+	// and Share always, and L1/R1 only for the statistics combo, which is the one
+	// that consumes them — holding L1 and pressing Start+Select for PS must not
+	// steal the shoulder the player is holding.
+	private fun releaseComboEmits(shoulders: Boolean)
+	{
+		if(startSent) { startSent = false; setKeyButton(ControllerState.BUTTON_OPTIONS, false) }
+		if(selectSent) { selectSent = false; setKeyButton(ControllerState.BUTTON_SHARE, false) }
+		if(shoulders && l1Down) setKeyButton(ControllerState.BUTTON_L1, false)
+		if(shoulders && r1Down) setKeyButton(ControllerState.BUTTON_R1, false)
+	}
+
+	private fun setComboDown(keyCode: Int, down: Boolean)
+	{
+		when(keyCode)
+		{
+			KeyEvent.KEYCODE_BUTTON_START -> startDown = down
+			KeyEvent.KEYCODE_BUTTON_SELECT -> selectDown = down
+			KeyEvent.KEYCODE_BUTTON_L1 -> l1Down = down
+			else -> r1Down = down
+		}
+	}
+
+	private fun handleComboKey(event: KeyEvent, keyCode: Int)
+	{
+		val mask = comboMask(keyCode)
+		val isStart = keyCode == KeyEvent.KEYCODE_BUTTON_START
+		val isSelect = keyCode == KeyEvent.KEYCODE_BUTTON_SELECT
 		when(event.action)
 		{
 			KeyEvent.ACTION_DOWN -> {
 				if(event.repeatCount > 0)
 					return
-				val otherDown = if(isStart) selectDown else startDown
-				if(isStart) startDown = true else selectDown = true
-				if(otherDown && !comboActive)
+				setComboDown(keyCode, true)
+				if(!comboActive && startDown && l1Down && r1Down)
+				{
+					// Stats overlay. One toggle per press: while the combo stays
+					// held nothing else is emitted.
+					comboActive = true
+					cancelPendingComboEmits()
+					releaseComboEmits(true)
+					statsToggleCallback?.invoke()
+				}
+				else if(!comboActive && startDown && selectDown)
 				{
 					comboActive = true
 					cancelPendingComboEmits()
-					if(startSent) { startSent = false; setKeyButton(ControllerState.BUTTON_OPTIONS, false) }
-					if(selectSent) { selectSent = false; setKeyButton(ControllerState.BUTTON_SHARE, false) }
+					releaseComboEmits(false)
 					sendPsTap()
 				}
-				else if(!comboActive)
+				else if(isStart || isSelect)
 				{
-					val pending = Runnable {
-						if(comboActive) return@Runnable
-						if(isStart) startSent = true else selectSent = true
-						setKeyButton(mask, true)
+					// Held back so a combo can still form; while a combo is armed
+					// they stay silent until everything is released.
+					if(!comboActive)
+					{
+						val pending = Runnable {
+							if(comboActive) return@Runnable
+							if(isStart) startSent = true else selectSent = true
+							setKeyButton(mask, true)
+						}
+						if(isStart) startPendingRunnable = pending else selectPendingRunnable = pending
+						mainHandler.postDelayed(pending, COMBO_WINDOW_MS)
 					}
-					if(isStart) startPendingRunnable = pending else selectPendingRunnable = pending
-					mainHandler.postDelayed(pending, COMBO_WINDOW_MS)
 				}
+				else
+					// L1/R1 go out at once, also right after a combo: the player
+					// pressing them again means they want to play.
+					setKeyButton(mask, true)
 			}
 			KeyEvent.ACTION_UP -> {
-				if(isStart) startDown = false else selectDown = false
-				if(comboActive)
-				{
-					if(!startDown && !selectDown)
-						comboActive = false
-				}
-				else if(isStart)
+				setComboDown(keyCode, false)
+				if(isStart)
 				{
 					startPendingRunnable?.let { mainHandler.removeCallbacks(it) }
 					startPendingRunnable = null
 					if(startSent) { startSent = false; setKeyButton(mask, false) }
+					else if(!comboActive) sendKeyTap(mask, true)
 				}
-				else
+				else if(isSelect)
 				{
 					selectPendingRunnable?.let { mainHandler.removeCallbacks(it) }
 					selectPendingRunnable = null
 					if(selectSent) { selectSent = false; setKeyButton(mask, false) }
+					else if(!comboActive) sendKeyTap(mask, false)
 				}
+				else
+					setKeyButton(mask, false)
+				if(comboActive && !startDown && !selectDown && !l1Down && !r1Down)
+					comboActive = false
 			}
 		}
 	}
@@ -227,9 +309,12 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		if(event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP)
 			return false
 
-		if(psComboEnabled && (event.keyCode == KeyEvent.KEYCODE_BUTTON_START || event.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT))
+		if(psComboEnabled && (event.keyCode == KeyEvent.KEYCODE_BUTTON_START ||
+				event.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT ||
+				event.keyCode == KeyEvent.KEYCODE_BUTTON_L1 ||
+				event.keyCode == KeyEvent.KEYCODE_BUTTON_R1))
 		{
-			handleStartSelectKey(event, event.keyCode == KeyEvent.KEYCODE_BUTTON_START)
+			handleComboKey(event, event.keyCode)
 			return true
 		}
 
@@ -314,6 +399,11 @@ class StreamInput(val context: Context, val preferences: Preferences)
 	companion object
 	{
 		private const val PS_TAP_MS = 80L
-		private const val COMBO_WINDOW_MS = 90L
+		// Long enough for three buttons pressed together; short enough that a
+		// lone Options/Share press is not felt as a delay.
+		private const val COMBO_WINDOW_MS = 120L
+		// Length of the press synthesised for a Start/Select tap that ended
+		// inside the hold-back window.
+		private const val KEY_TAP_MS = 60L
 	}
 }

@@ -7,6 +7,7 @@
 #include <chiaki/common.h>
 #include <chiaki/log.h>
 #include <chiaki/session.h>
+#include <chiaki/packetstats.h>
 #include <chiaki/discoveryservice.h>
 #include <chiaki/regist.h>
 
@@ -402,6 +403,28 @@ JNIEXPORT jint JNICALL JNI_FCN(sessionJoin)(JNIEnv *env, jobject obj, jlong ptr)
 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
 	CHIAKI_LOGI(session->log, "Join JNI Session");
 	return chiaki_session_join(&session->session);
+}
+
+JNIEXPORT jlongArray JNICALL JNI_FCN(sessionStats)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	uint64_t bytes = android_chiaki_video_decoder_get_bytes(&session->video_decoder);
+
+	/* Read-only: reset stays with the congestion controller so the overlay does
+	 * not steal its measurement window. Callers diff consecutive samples. */
+	uint64_t packets_received = 0, packets_lost = 0;
+	chiaki_packet_stats_get(&session->session.stream_connection.packet_stats, false, &packets_received, &packets_lost);
+
+	jlong values[4];
+	values[0] = (jlong)bytes;
+	values[1] = (jlong)packets_received;
+	values[2] = (jlong)packets_lost;
+	values[3] = (jlong)session->session.rtt_us;
+
+	jlongArray arr = (*env)->NewLongArray(env, 4);
+	if(arr)
+		(*env)->SetLongArrayRegion(env, arr, 0, 4, values);
+	return arr;
 }
 
 JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlong ptr, jobject surface)

@@ -26,6 +26,20 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"/>
 
+    <TextView
+        android:id="@+id/statsText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_margin="6dp"
+        android:background="@color/stream_overlay_background"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="4dp"
+        android:textColor="@color/stream_text"
+        android:textSize="12sp"
+        android:visibility="gone"
+        tools:text="60 fps · 18.4 Mbps · 0.2% lost"/>
+
     <fragment
         android:id="@+id/controlsFragment"
         android:name="com.gameblabla.chiaki.touchcontrols.DefaultTouchControlsFragment"
@@ -73,6 +87,17 @@
                 android:textColor="@color/stream_text"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
+                app:switchPadding="8dp" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/statsSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="@string/stream_stats_label"
+                android:textColor="@color/stream_text"
+                app:layout_constraintStart_toEndOf="@id/touchpadOnlySwitch"
+                app:layout_constraintBottom_toBottomOf="parent"
                 app:switchPadding="8dp" />
 
             <com.google.android.material.button.MaterialButtonToggleGroup

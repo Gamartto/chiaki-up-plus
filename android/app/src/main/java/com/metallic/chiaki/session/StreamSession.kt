@@ -38,6 +38,10 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 		}
 	}
 
+	// [bytes, frames, packets_received, packets_lost], all cumulative since the
+	// stream started. Callers compute the per-second deltas.
+	fun stats(): LongArray? = session?.stats()
+
 	fun shutdown()
 	{
 		session?.stop()

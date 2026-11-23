@@ -9,6 +9,7 @@ import android.graphics.Matrix
 import android.os.*
 import android.view.*
 import android.widget.EditText
+import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -26,6 +27,7 @@ import com.gameblabla.chiaki.touchcontrols.DefaultTouchControlsFragment
 import com.gameblabla.chiaki.touchcontrols.TouchControlsFragment
 import com.gameblabla.chiaki.touchcontrols.TouchpadOnlyFragment
 import io.reactivex.disposables.CompositeDisposable
+import java.util.Locale
 import io.reactivex.rxkotlin.addTo
 import kotlin.math.min
 
@@ -63,6 +65,9 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		})[StreamViewModel::class.java]
 
 		viewModel.input.observe(this)
+		viewModel.input.statsToggleCallback = {
+			viewModel.setStatsEnabled(!(viewModel.statsEnabled.value ?: false))
+		}
 
 		binding = ActivityStreamBinding.inflate(layoutInflater)
 		setContentView(binding.root)
@@ -87,6 +92,29 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		})
 		binding.touchpadOnlySwitch.setOnCheckedChangeListener { _, isChecked ->
 			viewModel.setTouchpadOnlyEnabled(isChecked)
+			showOverlay()
+		}
+
+		viewModel.statsEnabled.observe(this, Observer {
+			// Syncing the switch must not look like the user flipping it: the
+			// listener below shows the overlay, which then stayed on screen.
+			suppressSwitchCallback = true
+			if(binding.statsSwitch.isChecked != it)
+				binding.statsSwitch.isChecked = it
+			suppressSwitchCallback = false
+			binding.statsText.visibility = if(it) View.VISIBLE else View.GONE
+			if(it)
+			{
+				applyStatsPosition()
+				startStatsPolling()
+			}
+			else
+				stopStatsPolling()
+		})
+		binding.statsSwitch.setOnCheckedChangeListener { _, isChecked ->
+			if(suppressSwitchCallback)
+				return@setOnCheckedChangeListener
+			viewModel.setStatsEnabled(isChecked)
 			showOverlay()
 		}
 
@@ -116,6 +144,100 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		}
 	}
 
+	// In-stream statistics: video bitrate and frame rate come from the decoder
+	// counters, packet loss from the lib. All four values are cumulative, so the
+	// overlay shows the delta against the previous sample.
+	private var suppressSwitchCallback = false
+	private val statsHandler = Handler(Looper.getMainLooper())
+	private var statsLastSample = 0L
+	private var statsLastBytes = 0L
+	private var statsLastReceived = 0L
+	private var statsLastLost = 0L
+
+	private val statsRunnable = object : Runnable
+	{
+		override fun run()
+		{
+			updateStats()
+			statsHandler.postDelayed(this, 1000)
+		}
+	}
+
+	private fun startStatsPolling()
+	{
+		statsHandler.removeCallbacks(statsRunnable)
+		statsHandler.post(statsRunnable)
+	}
+
+	private fun stopStatsPolling()
+	{
+		statsHandler.removeCallbacks(statsRunnable)
+	}
+
+	// Top by default, bottom when the user asks for it. The bottom variant keeps
+	// clear of the overlay bar.
+	private fun applyStatsPosition()
+	{
+		val lp = binding.statsText.layoutParams as? FrameLayout.LayoutParams ?: return
+		val margin = (6 * resources.displayMetrics.density).toInt()
+		val bottomClearance = (56 * resources.displayMetrics.density).toInt()
+		if(viewModel.preferences.statsAtBottom)
+		{
+			lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+			lp.bottomMargin = bottomClearance
+			lp.topMargin = 0
+		}
+		else
+		{
+			lp.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+			lp.topMargin = margin
+			lp.bottomMargin = 0
+		}
+		binding.statsText.layoutParams = lp
+	}
+
+	private fun updateStats()
+	{
+		val stats = viewModel.session.stats()
+		if(stats == null || stats.size < 4)
+		{
+			binding.statsText.text = getString(R.string.stream_stats_label)
+			return
+		}
+
+		val now = SystemClock.uptimeMillis()
+		val bytes = stats[0]
+		val received = stats[1]
+		val lost = stats[2]
+		val rttMs = if(stats.size > 3) stats[3] / 1000.0 else 0.0
+
+		if(statsLastSample == 0L)
+		{
+			statsLastSample = now
+			statsLastBytes = bytes
+			statsLastReceived = received
+			statsLastLost = lost
+			return
+		}
+
+		val dt = (now - statsLastSample) / 1000.0
+		if(dt <= 0.0)
+			return
+
+		val mbps = (bytes - statsLastBytes) * 8.0 / dt / 1000000.0
+		val dReceived = received - statsLastReceived
+		val dLost = lost - statsLastLost
+		val total = dReceived + dLost
+		val loss = if(total > 0) dLost * 100.0 / total else 0.0
+
+		binding.statsText.text = String.format(Locale.US, "%.1f Mbps · %.1f%% lost · %.0f ms", mbps, loss, rttMs)
+
+		statsLastSample = now
+		statsLastBytes = bytes
+		statsLastReceived = received
+		statsLastLost = lost
+	}
+
 	private val controlsDisposable = CompositeDisposable()
 
 	override fun onAttachFragment(fragment: Fragment)
@@ -135,12 +257,20 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	override fun onResume()
 	{
 		super.onResume()
+		// The LiveData observer owns the polling loop: starting a second chain
+		// here made the sample windows uneven and the fps readout jump.
+		if(viewModel.statsEnabled.value == true)
+		{
+			applyStatsPosition()
+			startStatsPolling()
+		}
 		hideSystemUI()
 		viewModel.session.resume()
 	}
 
 	override fun onPause()
 	{
+		statsHandler.removeCallbacks(statsRunnable)
 		super.onPause()
 		viewModel.session.pause()
 	}
@@ -158,6 +288,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	}
 
 	private val hideSystemUIRunnable = Runnable { hideSystemUI() }
+	private val hideOverlayRunnable = Runnable { hideOverlay() }
 
 	override fun onSystemUiVisibilityChange(visibility: Int)
 	{
@@ -181,6 +312,12 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			})
 		uiVisibilityHandler.removeCallbacks(hideSystemUIRunnable)
 		uiVisibilityHandler.postDelayed(hideSystemUIRunnable, HIDE_UI_TIMEOUT_MS)
+
+		// Hiding the system UI does not always deliver the visibility callback
+		// that used to be the only thing closing this bar, so it could stay on
+		// screen over the game. Close it on our own clock as well.
+		uiVisibilityHandler.removeCallbacks(hideOverlayRunnable)
+		uiVisibilityHandler.postDelayed(hideOverlayRunnable, HIDE_UI_TIMEOUT_MS + 1200L)
 	}
 
 	private fun hideOverlay()

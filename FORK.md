@@ -16,17 +16,24 @@ era activar el overlay y tocar el botón en pantalla — que tapa media pantalla
 
 ## Qué agrega este fork
 
-Diferencia con upstream: **5 commits, ~200 líneas**. Nada más del código se toca,
+Diferencia con upstream: **6 commits, ~250 líneas**. Nada más del código se toca,
 para que el rebase sobre upstream siga siendo trivial.
 
 1. **Start + Select = PS.** Aguantar los dos envía una pulsación de PS a la consola.
-   Las pulsaciones sueltas de Options y Share se retienen 90 ms para no adelantarse:
-   si en esa ventana aparece la otra tecla, gana la combinación y no se envía nada
-   suelto. Sin overlay, sin apps de terceros, sin root.
-2. **Nada más en el input.** Se probó también `Back = PS` (pulsación simple PS,
+   Las pulsaciones sueltas de Options y Share se retienen 120 ms para no adelantarse:
+   si en esa ventana aparece la otra tecla, gana la combinación. Un toque rápido de
+   cualquiera de las dos que termine dentro de la ventana se envía igual, como
+   pulsación corta de 60 ms, para que pausar con un toque siga funcionando. Sin
+   overlay, sin apps de terceros, sin root.
+2. **L1 + R1 + Start = estadísticas del stream.** Muestra fps decodificados, Mbps
+   efectivos y % de pérdida de paquetes sobre la barra del stream. L1 y R1 salen al
+   instante (retrasarlos se sentiría en cada pulsación de juego), así que el precio
+   del atajo es un toque breve de L1+R1 que la consola sí ve antes de que abra el
+   panel. Start sí se retiene, y mientras el combo esté armado no se envía nada.
+3. **Nada más en el input.** Se probó también `Back = PS` (pulsación simple PS,
    doble salida) y se descartó: interceptar Back rompe el gesto de swipe-back de
    Android y deja al usuario sin salida natural de la sesión. Solo Start+Select.
-3. **Bugs de empaquetado corregidos:** los `layout_behavior` de `activity_main.xml`
+4. **Bugs de empaquetado corregidos:** los `layout_behavior` de `activity_main.xml`
    usaban nombres relativos (rompía cualquier build con otro `applicationId`) y la
    autoridad del `FileProvider` estaba hardcodeada (impedía instalar al lado de otra
    copia con `INSTALL_FAILED_CONFLICTING_PROVIDER`).
