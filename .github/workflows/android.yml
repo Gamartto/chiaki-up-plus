@@ -1,0 +1,139 @@
+name: android
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Qué compilar"
+        type: choice
+        default: sideapk
+        options: [sideapk, standard, ambos]
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NDK_VERSION: "29.0.14206865"
+  PROTOC_VERSION: "21.12"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Submódulos que el build de Android necesita
+        run: |
+          git submodule update --init --recursive \
+            third-party/nanopb third-party/jerasure third-party/gf-complete \
+            android/app/src/main/cpp/oboe
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: SDK, NDK y CMake
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" \
+                     "ndk;$NDK_VERSION" "cmake;3.22.1" > /dev/null
+          echo "ndk.dir=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+
+      - name: protoc
+        run: |
+          curl -sSL -o /tmp/protoc.zip \
+            "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip"
+          python3 -c "import zipfile; zipfile.ZipFile('/tmp/protoc.zip').extractall('$RUNNER_TEMP/protoc')"
+          chmod +x "$RUNNER_TEMP/protoc/bin/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+
+      # El external project de OpenSSL dentro de .cxx es lo que hace lento un
+      # build limpio; con esto el primer paso baja a ~1 min y el resto es Kotlin.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/app/.cxx
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties', 'CMakeLists.txt', 'lib/**/*.c', 'lib/**/*.h') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Firma y local.properties
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PW: ${{ secrets.ANDROID_KEYSTORE_PW }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ANDROID_KEY_PW }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/chiaki.jks"
+            KEYSTORE="$RUNNER_TEMP/chiaki.jks"
+          else
+            echo "::warning::Sin keystore en los secretos: el APK sale con la firma debug de Gradle y no podrá actualizar una instalación existente."
+            KEYSTORE="$RUNNER_TEMP/keystore-ausente.jks"
+          fi
+          cat > android/local.properties <<EOF
+          sdk.dir=$ANDROID_SDK_ROOT
+          chiakiKeystore=$KEYSTORE
+          chiakiKeystorePW=$KEYSTORE_PW
+          chiakiKeyAlias=$KEY_ALIAS
+          chiakiKeyPW=$KEY_PW
+          EOF
+
+      - name: Parches de build (oboe, nanopb)
+        run: bash scripts/prepare-build.sh
+
+      - name: Compilar
+        working-directory: android
+        run: |
+          set -e
+          case "${{ github.event.inputs.target || 'ambos' }}" in
+            sideapk)  TASKS="assembleSideapkDebug" ;;
+            standard) TASKS="assembleStandardDebug" ;;
+            *)        TASKS="assembleSideapkDebug assembleStandardDebug" ;;
+          esac
+          echo "Tareas: $TASKS"
+          ./gradlew $TASKS -Parm64only --no-daemon -Dorg.gradle.jvmargs="-Xmx3g"
+
+      - name: Reunir los APK
+        run: |
+          set -e
+          SHORT="${GITHUB_SHA::7}"
+          mkdir -p dist
+          for flavour in sideapk standard; do
+            src="android/app/build/outputs/apk/$flavour/debug/app-$flavour-debug.apk"
+            [ -f "$src" ] || continue
+            out="dist/chiaki-up-plus-${flavour}-${SHORT}.apk"
+            cp "$src" "$out"
+            echo "--- $out"
+            /usr/local/lib/android/sdk/build-tools/35.0.0/aapt2 dump badging "$out" | grep -E "^package|application-label:" || true
+          done
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chiaki-up-plus-${{ github.sha }}
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publicar en el release si es un tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/*.apk --clobber
