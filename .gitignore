@@ -30,4 +30,4 @@ chiaki.conf
 /appimage
 .cache/
 *.keystore
-android/local.properties
+android/local.propertiesdist/
