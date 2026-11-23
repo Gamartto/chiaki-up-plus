@@ -52,6 +52,18 @@ to leave the app silent until the stream was restarted, because the Oboe error
 callback only wrote a log line. The stream is reopened on the new device, falling
 back to shared mode when exclusive is refused.
 
+**Touchpad indicator on your terms.** The pad overlay can be always visible, only
+while a finger is down, or never, and there is an optional zone tint that colours
+the whole pad by the third the finger is in (blue left, green centre, amber
+right), brighter while the click is held. The console only receives coordinates,
+so the tint is a visual aid, not a new protocol feature.
+
+**Autoconnect.** With a single registered console the app skips the list: if the
+console is on it connects, and if it is in rest mode it sends the wake packet and
+polls every 2 s for up to a minute, connecting as soon as the console answers.
+With several consoles the one marked *Use for autoconnect* is used; otherwise the
+list is shown. Leaving a stream still returns to the list.
+
 **Rumble strength and bitrate ceiling.** Rumble has a 0-150% scale over the motor
 instead of on/off. The manual bitrate field accepts up to 100 Mbit; the console
 still enforces its own limit and 45 Mbit remains the sensible ceiling over Wi-Fi.
