@@ -17,7 +17,9 @@
             app:key="@string/preferences_swap_cross_moon_key"
             app:title="@string/preferences_swap_cross_moon_title"
             app:summary="@string/preferences_swap_cross_moon_summary"
-            app:icon="@drawable/ic_gamepad" />
+            app:icon="@drawable/ic_gamepad" 
+            app:defaultValue="false"
+            />
 
         <SwitchPreference
             app:key="@string/preferences_ps_combo_enabled_key"
@@ -25,6 +27,15 @@
             app:summary="@string/preferences_ps_combo_summary"
             app:defaultValue="true"
             app:icon="@drawable/ic_gamepad" />
+
+        <androidx.preference.SeekBarPreference
+            app:key="@string/preferences_rumble_strength_key"
+            app:title="@string/preferences_rumble_strength_title"
+            app:summary="@string/preferences_rumble_strength_summary"
+            android:defaultValue="100"
+            app:min="0"
+            android:max="150"
+            app:showSeekBarValue="true" />
 
         <SwitchPreference
             app:key="@string/preferences_stats_at_bottom_key"
@@ -37,25 +48,33 @@
             app:key="@string/preferences_rumble_enabled_key"
             app:title="@string/preferences_rumble_enabled_title"
             app:summary="@string/preferences_rumble_enabled_summary"
-            app:icon="@drawable/ic_rumble" />
+            app:icon="@drawable/ic_rumble" 
+            app:defaultValue="true"
+            />
 
         <SwitchPreference
             app:key="@string/preferences_motion_enabled_key"
             app:title="@string/preferences_motion_enabled_title"
             app:summary="@string/preferences_motion_enabled_summary"
-            app:icon="@drawable/ic_motion" />
+            app:icon="@drawable/ic_motion" 
+            app:defaultValue="true"
+            />
 
         <SwitchPreference
             app:key="@string/preferences_button_haptic_enabled_key"
             app:title="@string/preferences_button_haptic_enabled_title"
             app:summary="@string/preferences_button_haptic_enabled_summary"
-            app:icon="@drawable/ic_button_haptic" />
+            app:icon="@drawable/ic_button_haptic" 
+            app:defaultValue="true"
+            />
 
         <SwitchPreference
             app:key="@string/preferences_log_verbose_key"
             app:title="@string/preferences_log_verbose_title"
             app:summary="@string/preferences_log_verbose_summary"
-            app:icon="@drawable/ic_log" />
+            app:icon="@drawable/ic_log" 
+            app:defaultValue="false"
+            />
 
         <Preference
             app:key="logs"

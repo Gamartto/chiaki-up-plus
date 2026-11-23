@@ -135,6 +135,9 @@ typedef struct android_chiaki_session_t
 	jmethodID java_session_event_login_pin_request_meth;
 	jmethodID java_session_event_quit_meth;
 	jmethodID java_session_event_rumble_meth;
+	jmethodID java_session_event_keyboard_open_meth;
+	jmethodID java_session_event_keyboard_text_change_meth;
+	jmethodID java_session_event_keyboard_remote_close_meth;
 	jfieldID java_controller_state_buttons;
 	jfieldID java_controller_state_l2_state;
 	jfieldID java_controller_state_r2_state;
@@ -194,6 +197,25 @@ static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 			free(reason_str);
 			break;
 		}
+		case CHIAKI_EVENT_KEYBOARD_OPEN:
+		case CHIAKI_EVENT_KEYBOARD_TEXT_CHANGE:
+		{
+			char *text = strdup_jni(event->keyboard.text_str);
+			jstring text_java = text ? E->NewStringUTF(env, text) : NULL;
+			E->CallVoidMethod(env, session->java_session,
+					event->type == CHIAKI_EVENT_KEYBOARD_OPEN
+						? session->java_session_event_keyboard_open_meth
+						: session->java_session_event_keyboard_text_change_meth,
+					text_java);
+			if(text_java)
+				E->DeleteLocalRef(env, text_java);
+			free(text);
+			break;
+		}
+		case CHIAKI_EVENT_KEYBOARD_REMOTE_CLOSE:
+			E->CallVoidMethod(env, session->java_session,
+					session->java_session_event_keyboard_remote_close_meth);
+			break;
 		case CHIAKI_EVENT_RUMBLE:
 			E->CallVoidMethod(env, session->java_session,
 							  session->java_session_event_rumble_meth,
@@ -231,6 +253,7 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 
 	ChiakiConnectInfo connect_info = { 0 };
 	connect_info.ps5 = ps5;
+	connect_info.enable_keyboard = true;
 
 	const char *str_borrow = E->GetStringUTFChars(env, host_string, NULL);
 	connect_info.host = host_str = strdup(str_borrow);
@@ -318,6 +341,9 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	session->java_session = E->NewGlobalRef(env, java_session);
 	session->java_session_class = E->NewGlobalRef(env, E->GetObjectClass(env, session->java_session));
 	session->java_session_event_connected_meth = E->GetMethodID(env, session->java_session_class, "eventConnected", "()V");
+	session->java_session_event_keyboard_open_meth = E->GetMethodID(env, session->java_session_class, "eventKeyboardOpen", "(Ljava/lang/String;)V");
+	session->java_session_event_keyboard_text_change_meth = E->GetMethodID(env, session->java_session_class, "eventKeyboardTextChange", "(Ljava/lang/String;)V");
+	session->java_session_event_keyboard_remote_close_meth = E->GetMethodID(env, session->java_session_class, "eventKeyboardRemoteClose", "()V");
 	session->java_session_event_login_pin_request_meth = E->GetMethodID(env, session->java_session_class, "eventLoginPinRequest", "(Z)V");
 	session->java_session_event_quit_meth = E->GetMethodID(env, session->java_session_class, "eventQuit", "(ILjava/lang/String;)V");
 	session->java_session_event_rumble_meth = E->GetMethodID(env, session->java_session_class, "eventRumble", "(II)V");
@@ -425,6 +451,28 @@ JNIEXPORT jlongArray JNICALL JNI_FCN(sessionStats)(JNIEnv *env, jobject obj, jlo
 	if(arr)
 		(*env)->SetLongArrayRegion(env, arr, 0, 4, values);
 	return arr;
+}
+
+JNIEXPORT jint JNICALL JNI_FCN(sessionKeyboardText)(JNIEnv *env, jobject obj, jlong ptr, jstring text)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	const char *text_str = text ? (*env)->GetStringUTFChars(env, text, NULL) : NULL;
+	ChiakiErrorCode err = chiaki_session_keyboard_set_text(&session->session, text_str ? text_str : "");
+	if(text_str)
+		(*env)->ReleaseStringUTFChars(env, text, text_str);
+	return err;
+}
+
+JNIEXPORT jint JNICALL JNI_FCN(sessionKeyboardAccept)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	return chiaki_session_keyboard_accept(&session->session);
+}
+
+JNIEXPORT jint JNICALL JNI_FCN(sessionKeyboardReject)(JNIEnv *env, jobject obj, jlong ptr)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	return chiaki_session_keyboard_reject(&session->session);
 }
 
 JNIEXPORT void JNICALL JNI_FCN(sessionSetSurface)(JNIEnv *env, jobject obj, jlong ptr, jobject surface)

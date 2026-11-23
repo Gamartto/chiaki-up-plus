@@ -47,6 +47,7 @@ class StreamInput(val context: Context, val preferences: Preferences)
 	}
 
 	private val sensorControllerState = ControllerState() // from Motion Sensors
+
 	private val keyControllerState = ControllerState() // from KeyEvents
 	private val motionControllerState = ControllerState() // from MotionEvents
 	var touchControllerState = ControllerState()

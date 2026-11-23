@@ -94,6 +94,9 @@ private class ChiakiNative
 		@JvmStatic external fun sessionSetControllerState(ptr: Long, controllerState: ControllerState)
 		@JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
 		@JvmStatic external fun sessionStats(ptr: Long): LongArray
+		@JvmStatic external fun sessionKeyboardText(ptr: Long, text: String): Int
+		@JvmStatic external fun sessionKeyboardAccept(ptr: Long): Int
+		@JvmStatic external fun sessionKeyboardReject(ptr: Long): Int
 		@JvmStatic external fun discoveryServiceCreate(result: CreateResult, options: DiscoveryServiceOptions, javaService: DiscoveryService)
 		@JvmStatic external fun discoveryServiceFree(ptr: Long)
 		@JvmStatic external fun discoveryServiceWakeup(ptr: Long, host: String, userCredential: Long, ps5: Boolean)
@@ -318,6 +321,9 @@ object ConnectedEvent: Event()
 data class LoginPinRequestEvent(val pinIncorrect: Boolean): Event()
 data class QuitEvent(val reason: QuitReason, val reasonString: String?): Event()
 data class RumbleEvent(val left: UByte, val right: UByte): Event()
+data class KeyboardOpenEvent(val text: String?): Event()
+data class KeyboardTextChangeEvent(val text: String?): Event()
+object KeyboardRemoteCloseEvent: Event()
 
 class CreateError(val errorCode: ErrorCode): Exception("Failed to create a native object: $errorCode")
 
@@ -379,6 +385,25 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 	{
 		event(RumbleEvent(left.toUByte(), right.toUByte()))
 	}
+
+	private fun eventKeyboardOpen(text: String?)
+	{
+		event(KeyboardOpenEvent(text))
+	}
+
+	private fun eventKeyboardTextChange(text: String?)
+	{
+		event(KeyboardTextChangeEvent(text))
+	}
+
+	private fun eventKeyboardRemoteClose()
+	{
+		event(KeyboardRemoteCloseEvent)
+	}
+
+	fun keyboardText(text: String) = ChiakiNative.sessionKeyboardText(nativePtr, text)
+	fun keyboardAccept() = ChiakiNative.sessionKeyboardAccept(nativePtr)
+	fun keyboardReject() = ChiakiNative.sessionKeyboardReject(nativePtr)
 
 	fun setSurface(surface: Surface?)
 	{

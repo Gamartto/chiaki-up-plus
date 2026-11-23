@@ -7,6 +7,8 @@ import android.animation.AnimatorListenerAdapter
 import android.app.AlertDialog
 import android.graphics.Matrix
 import android.os.*
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.*
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -128,11 +130,26 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		viewModel.session.state.observe(this, Observer { this.stateChanged(it) })
 		adjustStreamViewAspect()
 
-		if(Preferences(this).rumbleEnabled)
+		viewModel.session.keyboardState.observe(this, Observer { text ->
+			if(text == null)
+			{
+				keyboardDialog?.dismiss()
+				keyboardDialog = null
+			}
+			else
+				showKeyboardDialog(text)
+		})
+
+		val rumblePreferences = Preferences(this)
+		if(rumblePreferences.rumbleEnabled)
 		{
 			val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+			// Strength is a percentage so 0 equals off and 150 exaggerates the
+			// motor, clamped to what the API accepts.
+			val strength = rumblePreferences.rumbleStrength
 			viewModel.session.rumbleState.observe(this, Observer {
-				val amplitude = min(255, (it.left.toInt() + it.right.toInt()) / 2)
+				val base = (it.left.toInt() + it.right.toInt()) / 2
+				val amplitude = min(255, base * strength / 100)
 				vibrator.cancel()
 				if(amplitude == 0)
 					return@Observer
@@ -147,6 +164,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	// In-stream statistics: video bitrate and frame rate come from the decoder
 	// counters, packet loss from the lib. All four values are cumulative, so the
 	// overlay shows the delta against the previous sample.
+	private var keyboardDialog: androidx.appcompat.app.AlertDialog? = null
 	private var suppressSwitchCallback = false
 	private val statsHandler = Handler(Looper.getMainLooper())
 	private var statsLastSample = 0L
@@ -161,6 +179,41 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			updateStats()
 			statsHandler.postDelayed(this, 1000)
 		}
+	}
+
+	// The console asks for text and we forward whatever is typed, live. Accepting
+	// closes the console-side field; cancelling rejects it there too.
+	private fun showKeyboardDialog(initial: String)
+	{
+		if(keyboardDialog != null)
+			return
+
+		val editText = EditText(this).apply {
+			setText(initial)
+			setSelection(initial.length)
+			hint = getString(R.string.stream_keyboard_hint)
+		}
+
+		val dialog = MaterialAlertDialogBuilder(this)
+			.setTitle(R.string.stream_keyboard_title)
+			.setView(editText)
+			.setPositiveButton(android.R.string.ok) { _, _ -> viewModel.session.keyboardAccept() }
+			.setNegativeButton(android.R.string.cancel) { _, _ -> viewModel.session.keyboardReject() }
+			.setOnDismissListener { keyboardDialog = null }
+			.create()
+
+		editText.addTextChangedListener(object : TextWatcher
+		{
+			override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) { }
+			override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { }
+			override fun afterTextChanged(s: Editable?)
+			{
+				viewModel.session.keyboardText(s?.toString() ?: "")
+			}
+		})
+
+		keyboardDialog = dialog
+		dialog.show()
 	}
 
 	private fun startStatsPolling()

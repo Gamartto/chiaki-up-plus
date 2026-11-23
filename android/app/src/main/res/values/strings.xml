@@ -90,10 +90,14 @@
     <string name="preferences_ps_combo_title">Controller Shortcuts</string>
     <string name="preferences_ps_combo_summary">Start + Select presses the PS button. L1 + R1 + Start shows the stream statistics. Options, Share, L1 and R1 still work on their own.</string>
     <string name="stream_stats_label">Stats</string>
+    <string name="stream_keyboard_title">Console text field</string>
+    <string name="stream_keyboard_hint">Type here</string>
     <string name="preferences_stats_at_bottom_title">Stats at the bottom</string>
     <string name="preferences_stats_at_bottom_summary">Show the stream statistics at the bottom of the screen instead of the top.</string>
     <string name="preferences_rumble_enabled_title">Rumble</string>
     <string name="preferences_rumble_enabled_summary">Use phone vibration motor for rumble</string>
+    <string name="preferences_rumble_strength_title">Rumble strength</string>
+    <string name="preferences_rumble_strength_summary">Scale the vibration motor output. 0% is the same as turning rumble off, 150% exaggerates it.</string>
     <string name="preferences_motion_enabled_title">Motion</string>
     <string name="preferences_motion_enabled_summary">Use device\'s motion sensors for controller motion</string>
     <string name="preferences_button_haptic_enabled_title">Touch Haptics</string>
@@ -113,6 +117,7 @@
     <string name="preferences_on_screen_controls_enabled_key">on_screen_controls_enabled</string>
     <string name="preferences_touchpad_only_enabled_key">touchpad_only_enabled</string>
     <string name="preferences_rumble_enabled_key">rumble_enabled</string>
+    <string name="preferences_rumble_strength_key">rumble_strength</string>
     <string name="preferences_motion_enabled_key">motion_enabled</string>
     <string name="preferences_button_haptic_enabled_key">button_haptic_enabled</string>
     <string name="preferences_log_verbose_key">log_verbose</string>

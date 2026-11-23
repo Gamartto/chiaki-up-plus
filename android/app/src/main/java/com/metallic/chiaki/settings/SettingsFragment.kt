@@ -60,6 +60,20 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		else -> defValue
 	}
 
+	override fun getInt(key: String, defValue: Int) = when(key)
+	{
+		preferences.rumbleStrengthKey -> preferences.rumbleStrength
+		else -> defValue
+	}
+
+	override fun putInt(key: String, value: Int)
+	{
+		when(key)
+		{
+			preferences.rumbleStrengthKey -> preferences.rumbleStrength = value
+		}
+	}
+
 	override fun putString(key: String, value: String?)
 	{
 		when(key)

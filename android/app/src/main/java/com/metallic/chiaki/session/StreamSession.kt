@@ -28,6 +28,27 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 	private val _rumbleState = MutableLiveData<RumbleEvent>(RumbleEvent(0U, 0U))
 	val rumbleState: LiveData<RumbleEvent> get() = _rumbleState
 
+	// Console-side text field: the console asks, we forward what the user types.
+	private val _keyboardState = MutableLiveData<String?>(null)
+	val keyboardState: LiveData<String?> get() = _keyboardState
+
+	fun keyboardText(text: String)
+	{
+		session?.keyboardText(text)
+	}
+
+	fun keyboardAccept()
+	{
+		session?.keyboardAccept()
+		_keyboardState.postValue(null)
+	}
+
+	fun keyboardReject()
+	{
+		session?.keyboardReject()
+		_keyboardState.postValue(null)
+	}
+
 	private var surfaceTexture: SurfaceTexture? = null
 	private var surface: Surface? = null
 
@@ -94,6 +115,9 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 				)
 			)
 			is RumbleEvent -> _rumbleState.postValue(event)
+			is KeyboardOpenEvent -> _keyboardState.postValue(event.text ?: "")
+			is KeyboardTextChangeEvent -> _keyboardState.postValue(event.text ?: "")
+			is KeyboardRemoteCloseEvent -> _keyboardState.postValue(null)
 		}
 	}
 

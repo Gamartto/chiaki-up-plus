@@ -98,6 +98,11 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(swapCrossMoonKey, false)
 		set(value) { sharedPreferences.edit().putBoolean(swapCrossMoonKey, value).apply() }
 
+	val rumbleStrengthKey get() = resources.getString(R.string.preferences_rumble_strength_key)
+	var rumbleStrength
+		get() = sharedPreferences.getInt(rumbleStrengthKey, 100).coerceIn(0, 150)
+		set(value) { sharedPreferences.edit().putInt(rumbleStrengthKey, value.coerceIn(0, 150)).apply() }
+
 	val statsAtBottomKey get() = resources.getString(R.string.preferences_stats_at_bottom_key)
 	var statsAtBottom
 		get() = sharedPreferences.getBoolean(statsAtBottomKey, false)
@@ -127,7 +132,8 @@ class Preferences(context: Context)
 		}  ?: fpsDefault
 		set(value) { sharedPreferences.edit().putString(fpsKey, value.value).apply() }
 
-	fun validateBitrate(bitrate: Int) = max(2000, min(50000, bitrate))
+	// The console caps this itself; 100 Mbit is only an upper bound for the UI.
+	fun validateBitrate(bitrate: Int) = max(2000, min(100000, bitrate))
 	val bitrateKey get() = resources.getString(R.string.preferences_bitrate_key)
 	var bitrate
 		get() = sharedPreferences.getInt(bitrateKey, 0).let { if(it == 0) null else validateBitrate(it) }
