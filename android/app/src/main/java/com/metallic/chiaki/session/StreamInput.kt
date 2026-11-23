@@ -2,6 +2,9 @@ package com.gameblabla.chiaki.session
 
 import android.content.Context
 import android.hardware.*
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.*
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
@@ -54,6 +57,104 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		}
 
 	private val swapCrossMoon = preferences.swapCrossMoon
+
+	// Read on every event (not cached) so the switch applies immediately, even
+	// mid-stream, and never disagrees with what Settings shows.
+	private val psComboEnabled get() = preferences.psComboEnabled
+	private val mainHandler = Handler(Looper.getMainLooper())
+	private var psReleaseRunnable: Runnable? = null
+
+	private fun sendPsTap()
+	{
+		keyControllerState.buttons = keyControllerState.buttons or ControllerState.BUTTON_PS
+		controllerStateUpdated()
+		psReleaseRunnable?.let { mainHandler.removeCallbacks(it) }
+		val release = Runnable {
+			keyControllerState.buttons = keyControllerState.buttons and ControllerState.BUTTON_PS.inv()
+			controllerStateUpdated()
+		}
+		psReleaseRunnable = release
+		mainHandler.postDelayed(release, PS_TAP_MS)
+	}
+
+	// Start + Select combo → one PS tap. The individual Options/Share presses are
+	// held back for COMBO_WINDOW_MS so a normal single press still reaches the console.
+	private var startDown = false
+	private var selectDown = false
+	private var comboActive = false
+	private var startSent = false
+	private var selectSent = false
+	private var startPendingRunnable: Runnable? = null
+	private var selectPendingRunnable: Runnable? = null
+
+	private fun setKeyButton(mask: UInt, pressed: Boolean)
+	{
+		keyControllerState.buttons = if(pressed)
+			keyControllerState.buttons or mask
+		else
+			keyControllerState.buttons and mask.inv()
+		controllerStateUpdated()
+	}
+
+	private fun cancelPendingComboEmits()
+	{
+		startPendingRunnable?.let { mainHandler.removeCallbacks(it) }
+		selectPendingRunnable?.let { mainHandler.removeCallbacks(it) }
+		startPendingRunnable = null
+		selectPendingRunnable = null
+	}
+
+	private fun handleStartSelectKey(event: KeyEvent, isStart: Boolean)
+	{
+		val mask = if(isStart) ControllerState.BUTTON_OPTIONS else ControllerState.BUTTON_SHARE
+		when(event.action)
+		{
+			KeyEvent.ACTION_DOWN -> {
+				if(event.repeatCount > 0)
+					return
+				val otherDown = if(isStart) selectDown else startDown
+				if(isStart) startDown = true else selectDown = true
+				if(otherDown && !comboActive)
+				{
+					comboActive = true
+					cancelPendingComboEmits()
+					if(startSent) { startSent = false; setKeyButton(ControllerState.BUTTON_OPTIONS, false) }
+					if(selectSent) { selectSent = false; setKeyButton(ControllerState.BUTTON_SHARE, false) }
+					sendPsTap()
+				}
+				else if(!comboActive)
+				{
+					val pending = Runnable {
+						if(comboActive) return@Runnable
+						if(isStart) startSent = true else selectSent = true
+						setKeyButton(mask, true)
+					}
+					if(isStart) startPendingRunnable = pending else selectPendingRunnable = pending
+					mainHandler.postDelayed(pending, COMBO_WINDOW_MS)
+				}
+			}
+			KeyEvent.ACTION_UP -> {
+				if(isStart) startDown = false else selectDown = false
+				if(comboActive)
+				{
+					if(!startDown && !selectDown)
+						comboActive = false
+				}
+				else if(isStart)
+				{
+					startPendingRunnable?.let { mainHandler.removeCallbacks(it) }
+					startPendingRunnable = null
+					if(startSent) { startSent = false; setKeyButton(mask, false) }
+				}
+				else
+				{
+					selectPendingRunnable?.let { mainHandler.removeCallbacks(it) }
+					selectPendingRunnable = null
+					if(selectSent) { selectSent = false; setKeyButton(mask, false) }
+				}
+			}
+		}
+	}
 
 	private val sensorEventListener = object: SensorEventListener {
 		override fun onSensorChanged(event: SensorEvent)
@@ -125,6 +226,12 @@ class StreamInput(val context: Context, val preferences: Preferences)
 		//Log.i("StreamSession", "key event $event")
 		if(event.action != KeyEvent.ACTION_DOWN && event.action != KeyEvent.ACTION_UP)
 			return false
+
+		if(psComboEnabled && (event.keyCode == KeyEvent.KEYCODE_BUTTON_START || event.keyCode == KeyEvent.KEYCODE_BUTTON_SELECT))
+		{
+			handleStartSelectKey(event, event.keyCode == KeyEvent.KEYCODE_BUTTON_START)
+			return true
+		}
 
 		when(event.keyCode)
 		{
@@ -199,8 +306,14 @@ class StreamInput(val context: Context, val preferences: Preferences)
 					ControllerState.BUTTON_DPAD_UP).inv() or
 					dpadButtons
 		}
-		//Log.i("StreamSession", "motionEvent => $motionControllerState")
+		//Log.i("MotionEvent", "motionEvent => $motionControllerState")
 		controllerStateUpdated()
 		return true
+	}
+
+	companion object
+	{
+		private const val PS_TAP_MS = 80L
+		private const val COMBO_WINDOW_MS = 90L
 	}
 }

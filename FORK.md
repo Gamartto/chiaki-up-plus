@@ -12,23 +12,23 @@ era activar el overlay y tocar el botón en pantalla — que tapa media pantalla
 
 ## Qué agrega este fork
 
-Diferencia con upstream: **4 commits, ~190 líneas**. Nada más del código se toca,
+Diferencia con upstream: **5 commits, ~200 líneas**. Nada más del código se toca,
 para que el rebase sobre upstream siga siendo trivial.
 
 1. **Start + Select = PS.** Aguantar los dos envía una pulsación de PS a la consola.
    Las pulsaciones sueltas de Options y Share se retienen 90 ms para no adelantarse:
    si en esa ventana aparece la otra tecla, gana la combinación y no se envía nada
    suelto. Sin overlay, sin apps de terceros, sin root.
-2. **Back = PS (opcional, apagado por defecto).** Pulsación corta envía PS; 0,6 s
-   mantenido cierra el stream, porque hoy Back es la única forma de salir de una
-   sesión. Pensado para equipos donde Back no hace falta.
+2. **Nada más en el input.** Se probó también `Back = PS` (pulsación simple PS,
+   doble salida) y se descartó: interceptar Back rompe el gesto de swipe-back de
+   Android y deja al usuario sin salida natural de la sesión. Solo Start+Select.
 3. **Bugs de empaquetado corregidos:** los `layout_behavior` de `activity_main.xml`
    usaban nombres relativos (rompía cualquier build con otro `applicationId`) y la
    autoridad del `FileProvider` estaba hardcodeada (impedía instalar al lado de otra
    copia con `INSTALL_FAILED_CONFLICTING_PROVIDER`).
 
-Los dos switches están en Ajustes y se leen en cada evento de tecla: cambiarlos
-aplica al instante, sin reconectar el stream.
+El switch está en Ajustes y se lee en cada evento de tecla: cambiarlo aplica al
+instante, sin reconectar el stream.
 
 ## Instalar
 

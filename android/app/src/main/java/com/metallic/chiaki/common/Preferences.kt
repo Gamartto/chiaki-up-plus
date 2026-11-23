@@ -98,6 +98,11 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getBoolean(swapCrossMoonKey, false)
 		set(value) { sharedPreferences.edit().putBoolean(swapCrossMoonKey, value).apply() }
 
+	val psComboEnabledKey get() = resources.getString(R.string.preferences_ps_combo_enabled_key)
+	var psComboEnabled
+		get() = sharedPreferences.getBoolean(psComboEnabledKey, true)
+		set(value) { sharedPreferences.edit().putBoolean(psComboEnabledKey, value).apply() }
+
 	val resolutionKey get() = resources.getString(R.string.preferences_resolution_key)
 	var resolution
 		get() = sharedPreferences.getString(resolutionKey, resolutionDefault.value)?.let { value ->
