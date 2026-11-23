@@ -1,4 +1,8 @@
-# Chiaki-Up PS Combo (fork)
+# Chiaki-Up Plus (Chiaki-Up+)
+
+> Fork handheld-friendly de [Chiaki-Up](https://github.com/gameblabla/chiaki-up): mismo cliente de
+> PS4/PS5 Remote Play, pensado para equipos cuyo mando no tiene un botón PS utilizable.
+> El proyecto se llama **Chiaki-Up Plus** y la etiqueta del lanzador es **Chiaki-Up+**.
 
 Fork de [gameblabla/chiaki-up](https://github.com/gameblabla/chiaki-up), el cliente
 Android de PS4/PS5 Remote Play. Existe por una razón concreta: **en un handheld o

@@ -53,7 +53,7 @@ android {
         // Same applicationId as upstream: replaces an installed Chiaki-Up.
         standard {
             dimension "install"
-            resValue "string", "app_name", "Chiaki-Up"
+            resValue "string", "app_name", "Chiaki-Up+"
         }
         // Distinct applicationId: installs next to the Play Store build, which is
         // what most people want when they only want the extra controller mapping.
@@ -61,7 +61,7 @@ android {
             dimension "install"
             applicationIdSuffix ".pscombo"
             versionNameSuffix "-side"
-            resValue "string", "app_name", "Chiaki-Up PS Combo"
+            resValue "string", "app_name", "Chiaki-Up+"
         }
     }
     compileOptions {
