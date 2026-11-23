@@ -27,6 +27,9 @@ android {
         targetSdkVersion 35
         versionCode 17
         versionName chiakiVersion
+        // Build only arm64-v8a with -Parm64only for a much faster local build.
+        if(project.hasProperty("arm64only"))
+            ndk { abiFilters "arm64-v8a" }
         externalNativeBuild {
             cmake {
                 arguments "-DCHIAKI_ENABLE_TESTS=OFF",
@@ -44,6 +47,22 @@ android {
     }
     buildFeatures {
         viewBinding true
+    }
+    flavorDimensions "install"
+    productFlavors {
+        // Same applicationId as upstream: replaces an installed Chiaki-Up.
+        standard {
+            dimension "install"
+            resValue "string", "app_name", "Chiaki-Up"
+        }
+        // Distinct applicationId: installs next to the Play Store build, which is
+        // what most people want when they only want the extra controller mapping.
+        sideapk {
+            dimension "install"
+            applicationIdSuffix ".pscombo"
+            versionNameSuffix "-side"
+            resValue "string", "app_name", "Chiaki-Up PS Combo"
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

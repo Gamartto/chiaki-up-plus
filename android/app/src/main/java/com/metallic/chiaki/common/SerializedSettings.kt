@@ -141,7 +141,7 @@ fun exportAndShareAllSettings(activity: Activity): Disposable
 		}
 		.observeOn(AndroidSchedulers.mainThread())
 		.subscribe { _ ->
-			val uri = FileProvider.getUriForFile(activity, fileProviderAuthority, file)
+			val uri = FileProvider.getUriForFile(activity, fileProviderAuthority(activity), file)
 			Intent(Intent.ACTION_SEND).also {
 				it.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 				it.type = "application/json"

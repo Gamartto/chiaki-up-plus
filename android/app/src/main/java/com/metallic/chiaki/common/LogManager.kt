@@ -9,7 +9,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Pattern
 
-val fileProviderAuthority = "com.gameblabla.chiaki.fileprovider"
+// Derived from the real package name so that a build with a different
+// applicationId (e.g. a side-by-side install) does not collide with upstream.
+fun fileProviderAuthority(context: Context) = "${context.packageName}.fileprovider"
 private const val baseDirName = "session_logs" // must be in sync with filepaths.xml
 private val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS", Locale.US)
 private const val filePrefix = "chiaki_session_"
