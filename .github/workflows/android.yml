@@ -42,14 +42,27 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
-
       - name: SDK, NDK y CMake
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" \
-                     "ndk;$NDK_VERSION" "cmake;3.22.1" > /dev/null
-          echo "ndk.dir=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          # El runner ya trae cmdline-tools; setup-android@v3 intenta instalar el
+          # paquete legacy "tools" y ahora falla, así que no se usa.
+          SDK="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "Sin cmdline-tools en el runner, descargando"
+            curl -sSL -o /tmp/cmdline.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            python3 -c "import zipfile; zipfile.ZipFile('/tmp/cmdline.zip').extractall('$RUNNER_TEMP/sdk')"
+            chmod -R +x "$RUNNER_TEMP/sdk/cmdline-tools/bin"
+            SDKMANAGER="$RUNNER_TEMP/sdk/cmdline-tools/bin/sdkmanager"
+            SDK="$RUNNER_TEMP/sdk"
+          fi
+          echo "SDK: $SDK"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" \
+                        "ndk;$NDK_VERSION" "cmake;3.22.1" > /dev/null
+          ls "$SDK/ndk"
 
       - name: protoc
         run: |
@@ -118,7 +131,7 @@ jobs:
             out="dist/chiaki-up-plus-${flavour}-${SHORT}.apk"
             cp "$src" "$out"
             echo "--- $out"
-            /usr/local/lib/android/sdk/build-tools/35.0.0/aapt2 dump badging "$out" | grep -E "^package|application-label:" || true
+            "${ANDROID_SDK_ROOT}/build-tools/35.0.0/aapt2" dump badging "$out" | grep -E "^package|application-label:" || true
           done
           ls -l dist
 
