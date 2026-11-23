@@ -155,6 +155,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          BASE="$(grep -oP 'set\(CHIAKI_VERSION_MAJOR \K[0-9]+' CMakeLists.txt).$(grep -oP 'set\(CHIAKI_VERSION_MINOR \K[0-9]+' CMakeLists.txt).$(grep -oP 'set\(CHIAKI_VERSION_PATCH \K[0-9]+' CMakeLists.txt)"
+          TITLE="Chiaki-Up+ ${GITHUB_REF_NAME#v} (base Chiaki-Up $BASE)"
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || \
-            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+            gh release create "$GITHUB_REF_NAME" --title "$TITLE" --generate-notes
           gh release upload "$GITHUB_REF_NAME" dist/*.apk --clobber
