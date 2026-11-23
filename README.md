@@ -62,6 +62,15 @@ name and the FileProvider authority was hardcoded, so a second package crashed o
 start or collided with the installed one. `scripts/prepare-build.sh` covers the
 toolchain side (oboe under clang 21, nanopb under protobuf 4).
 
+## Versioning
+
+The fork has its own version line: `v1.0.0` is the first release, independent of
+the upstream number. The upstream base of each release is stated in the release
+notes and in the commit history, since a rebase can move it without this fork's
+own version changing. Inside the app, the version shown is the fork version, with
+`-side` appended for the `sideapk` flavour; `versionCode` grows with every CI run
+so an update always installs over the previous build.
+
 ## Install
 
 Two flavours are built from the same source:

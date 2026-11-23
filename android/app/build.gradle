@@ -15,7 +15,11 @@ def chiakiVersionMajor = grepVersionComponent(rootCMakeListsContent, "CHIAKI_VER
 def chiakiVersionMinor = grepVersionComponent(rootCMakeListsContent, "CHIAKI_VERSION_MINOR")
 def chiakiVersionPatch = grepVersionComponent(rootCMakeListsContent, "CHIAKI_VERSION_PATCH")
 def chiakiVersion = "$chiakiVersionMajor.$chiakiVersionMinor.$chiakiVersionPatch"
-println("Determined Chiaki Version: $chiakiVersion")
+// The fork has its own version line; the upstream base is stated in the README
+// and the release notes instead of being encoded in the tag.
+def forkVersion = project.findProperty("forkVersion") ?: "1.0.0"
+def forkVersionCode = (project.findProperty("forkVersionCode") ?: "100") as Integer
+println("Determined Chiaki Version: $chiakiVersion (fork $forkVersion)")
 
 android {
 	namespace "com.gameblabla.chiaki" 
@@ -25,8 +29,8 @@ android {
         applicationId "com.gameblabla.chiaki"
         minSdkVersion 30
         targetSdkVersion 35
-        versionCode 17
-        versionName chiakiVersion
+        versionCode forkVersionCode
+        versionName forkVersion
         // Build only arm64-v8a with -Parm64only for a much faster local build.
         if(project.hasProperty("arm64only"))
             ndk { abiFilters "arm64-v8a" }

@@ -118,7 +118,15 @@ jobs:
             *)        TASKS="assembleSideapkDebug assembleStandardDebug" ;;
           esac
           echo "Tareas: $TASKS"
-          ./gradlew $TASKS -Parm64only --no-daemon -Dorg.gradle.jvmargs="-Xmx3g"
+          # El tag manda la versión del fork (v1.0.0 -> 1.0.0). El versionCode
+          # crece con el número de corrida para que Android siempre acepte la
+          # actualización encima de la instalación anterior.
+          FORK_VERSION="${GITHUB_REF_NAME#v}"
+          case "$GITHUB_REF" in refs/tags/v*) : ;; *) FORK_VERSION="1.0.0" ;; esac
+          FORK_CODE=$((100 + GITHUB_RUN_NUMBER))
+          echo "Versión del fork: $FORK_VERSION (code $FORK_CODE)"
+          ./gradlew $TASKS -Parm64only -PforkVersion="$FORK_VERSION" -PforkVersionCode="$FORK_CODE" \
+            --no-daemon -Dorg.gradle.jvmargs="-Xmx3g"
 
       - name: Reunir los APK
         run: |
