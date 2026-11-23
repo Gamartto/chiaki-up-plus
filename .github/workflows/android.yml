@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: false
 
@@ -37,7 +37,7 @@ jobs:
             third-party/nanopb third-party/jerasure third-party/gf-complete \
             android/app/src/main/cpp/oboe
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -74,7 +74,7 @@ jobs:
 
       # El external project de OpenSSL dentro de .cxx es lo que hace lento un
       # build limpio; con esto el primer paso baja a ~1 min y el resto es Kotlin.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.gradle/caches
@@ -135,7 +135,7 @@ jobs:
           done
           ls -l dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: chiaki-up-plus-${{ github.sha }}
           path: dist/*.apk
