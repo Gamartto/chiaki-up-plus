@@ -12,12 +12,15 @@ import android.text.TextWatcher
 import android.view.*
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.*
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.slider.Slider
 import com.gameblabla.chiaki.R
 import com.gameblabla.chiaki.common.Preferences
 import com.gameblabla.chiaki.common.ext.viewModelFactory
@@ -55,7 +58,12 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	{
 		super.onCreate(savedInstanceState)
 
-		val connectInfo = intent.getParcelableExtra<ConnectInfo>(EXTRA_CONNECT_INFO)
+		// The video profile is read here rather than trusted from the intent: a
+		// mid-session bitrate change saves the preference and recreates the
+		// activity, and this is what makes the new ceiling take effect.
+		val connectInfo = intent.getParcelableExtra<ConnectInfo>(EXTRA_CONNECT_INFO)?.copy(
+			videoProfile = Preferences(this).videoProfile
+		)
 		if(connectInfo == null)
 		{
 			finish()
@@ -129,6 +137,9 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		viewModel.session.attachToSurfaceView(binding.surfaceView)
 		viewModel.session.state.observe(this, Observer { this.stateChanged(it) })
 		adjustStreamViewAspect()
+
+		updateBitrateButton()
+		binding.bitrateButton.setOnClickListener { showBitrateDialog() }
 
 		viewModel.session.keyboardState.observe(this, Observer { text ->
 			if(text == null)
@@ -214,6 +225,68 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 
 		keyboardDialog = dialog
 		dialog.show()
+	}
+
+	private fun currentBitrateMbps() = (Preferences(this).bitrate ?: 0) / 1000
+
+	private fun updateBitrateButton()
+	{
+		val mbps = currentBitrateMbps()
+		binding.bitrateButton.text = if(mbps <= 0)
+			getString(R.string.preferences_bitrate_title) + " · Auto"
+		else
+			getString(R.string.preferences_bitrate_value_summary, mbps)
+	}
+
+	// The bitrate is part of the launch specification, so the only way to change it
+	// is to open a new session: save the value and let the activity rebuild, which
+	// shuts the current session down and connects again with the new ceiling.
+	private fun showBitrateDialog()
+	{
+		val preferences = Preferences(this)
+		val slider = Slider(this).apply {
+			valueFrom = 0f
+			valueTo = 100f
+			stepSize = 5f
+			val current = currentBitrateMbps()
+			value = if(current <= 0) 0f else current.toFloat().coerceIn(5f, 100f)
+		}
+
+		val valueLabel = TextView(this).apply {
+			textSize = 18f
+			gravity = Gravity.CENTER_HORIZONTAL
+			val density = resources.displayMetrics.density
+			setPadding(0, (12 * density).toInt(), 0, (12 * density).toInt())
+		}
+		fun describe(mbps: Float) =
+			if(mbps <= 0f) getString(R.string.preferences_bitrate_title) + " · Auto"
+			else getString(R.string.preferences_bitrate_value_summary, mbps.toInt())
+		valueLabel.text = describe(slider.value)
+		slider.addOnChangeListener { _, value, _ -> valueLabel.text = describe(value) }
+
+		val container = LinearLayout(this).apply {
+			orientation = LinearLayout.VERTICAL
+			val density = resources.displayMetrics.density
+			setPadding((20 * density).toInt(), 0, (20 * density).toInt(), 0)
+			addView(valueLabel)
+			addView(slider)
+		}
+
+		MaterialAlertDialogBuilder(this)
+			.setTitle(R.string.stream_bitrate_dialog_title)
+			.setMessage(R.string.stream_bitrate_dialog_hint)
+			.setView(container)
+			.setPositiveButton(android.R.string.ok) { _, _ ->
+				val mbps = slider.value.toInt()
+				val newValue = if(mbps <= 0) null else mbps * 1000
+				if(newValue != preferences.bitrate)
+				{
+					preferences.bitrate = newValue
+					recreate()
+				}
+			}
+			.setNegativeButton(android.R.string.cancel, null)
+			.show()
 	}
 
 	private fun startStatsPolling()

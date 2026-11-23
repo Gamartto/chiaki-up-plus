@@ -120,10 +120,15 @@
             app:summary="%s"
             app:icon="@drawable/ic_fps"/>
 
-        <EditTextPreference
+        <androidx.preference.SeekBarPreference
             app:key="@string/preferences_bitrate_key"
             app:title="@string/preferences_bitrate_title"
-            app:icon="@drawable/ic_bitrate"/>
+            app:icon="@drawable/ic_bitrate"
+            android:max="100000"
+            app:min="0"
+            app:seekBarIncrement="1000"
+            android:defaultValue="0"
+            app:showSeekBarValue="false" />
 
         <ListPreference
             app:key="@string/preferences_codec_key"

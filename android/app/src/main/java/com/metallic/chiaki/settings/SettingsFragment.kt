@@ -59,7 +59,6 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 	{
 		preferences.resolutionKey -> preferences.resolution.value
 		preferences.fpsKey -> preferences.fps.value
-		preferences.bitrateKey -> preferences.bitrate?.toString() ?: ""
 		preferences.codecKey -> preferences.codec.value
 		preferences.touchpadOverlayKey -> preferences.touchpadOverlay
 		else -> defValue
@@ -68,6 +67,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 	override fun getInt(key: String, defValue: Int) = when(key)
 	{
 		preferences.rumbleStrengthKey -> preferences.rumbleStrength
+		preferences.bitrateKey -> preferences.bitrate ?: 0
 		else -> defValue
 	}
 
@@ -76,6 +76,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		when(key)
 		{
 			preferences.rumbleStrengthKey -> preferences.rumbleStrength = value
+			preferences.bitrateKey -> preferences.bitrate = if(value <= 0) null else value
 		}
 	}
 
@@ -93,7 +94,6 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 				val fps = Preferences.FPS.values().firstOrNull { it.value == value } ?: return
 				preferences.fps = fps
 			}
-			preferences.bitrateKey -> preferences.bitrate = value?.toIntOrNull()
 			preferences.touchpadOverlayKey -> { if(value != null) preferences.touchpadOverlay = value }
 			preferences.codecKey ->
 			{
@@ -124,6 +124,16 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 		val preferences = viewModel.preferences
 		preferenceManager.preferenceDataStore = DataStore(preferences)
 		setPreferencesFromResource(R.xml.preferences, rootKey)
+
+		preferenceScreen.findPreference<androidx.preference.SeekBarPreference>(preferences.bitrateKey)?.let {
+			it.summaryProvider = androidx.preference.Preference.SummaryProvider<androidx.preference.SeekBarPreference> { pref ->
+				val kbps = pref.value
+				if(kbps <= 0)
+					getString(R.string.preferences_bitrate_auto_summary, preferences.bitrateAuto / 1000)
+				else
+					getString(R.string.preferences_bitrate_value_summary, kbps / 1000)
+			}
+		}
 
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_resolution_key))?.let {
 			it.entryValues = Preferences.resolutionAll.map { res -> res.value }.toTypedArray()

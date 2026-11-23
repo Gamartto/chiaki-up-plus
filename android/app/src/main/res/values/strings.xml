@@ -83,6 +83,12 @@
     <string name="preferences_fps_title_30">30</string>
     <string name="preferences_fps_title_60">60</string>
     <string name="preferences_bitrate_auto">Auto (%d)</string>
+    <string name="preferences_bitrate_auto_summary">Auto (%1$d Mbps)</string>
+    <string name="preferences_bitrate_value_summary">%1$d Mbps</string>
+    <string name="stream_bitrate_label">Bitrate</string>
+    <string name="stream_bitrate_dialog_title">Stream bitrate</string>
+    <string name="stream_bitrate_dialog_hint">Reconnect to apply. Below 20 the image goes soft, above 50 the console usually stutters; 45 is the sweet spot over Wi-Fi. 0 lets the app pick from the resolution.</string>
+    <string name="stream_bitrate_reconnecting">Reconnecting at %1$d Mbps\u2026</string>
     <string name="preferences_codec_title_h264">H264</string>
     <string name="preferences_codec_title_h265">H265 (PS5 only)</string>
     <string name="preferences_swap_cross_moon_title">Swap Cross/Moon and Box/Pyramid Buttons</string>

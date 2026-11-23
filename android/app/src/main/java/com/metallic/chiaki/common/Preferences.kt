@@ -58,6 +58,16 @@ class Preferences(context: Context)
 
 	private val resources = context.resources
 
+	// The bitrate used to be a text field and therefore a String; a slider stores
+	// an Int under the same key and reading the wrong type throws. Convert before
+	// anything else touches it.
+	init
+	{
+		val raw = sharedPreferences.all[bitrateKey]
+		if(raw is String)
+			sharedPreferences.edit().putInt(bitrateKey, raw.toIntOrNull()?.let { validateBitrate(it) } ?: 0).apply()
+	}
+
 	val discoveryEnabledKey get() = resources.getString(R.string.preferences_discovery_enabled_key)
 	var discoveryEnabled
 		get() = sharedPreferences.getBoolean(discoveryEnabledKey, true)
