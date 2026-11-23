@@ -34,6 +34,8 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled
 		preferences.psComboEnabledKey -> preferences.psComboEnabled
 		preferences.statsAtBottomKey -> preferences.statsAtBottom
+		preferences.touchpadZoneTintKey -> preferences.touchpadZoneTint
+		preferences.autoConnectEnabledKey -> preferences.autoConnectEnabled
 		else -> defValue
 	}
 
@@ -48,6 +50,8 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled = value
 			preferences.psComboEnabledKey -> preferences.psComboEnabled = value
 			preferences.statsAtBottomKey -> preferences.statsAtBottom = value
+			preferences.touchpadZoneTintKey -> preferences.touchpadZoneTint = value
+			preferences.autoConnectEnabledKey -> preferences.autoConnectEnabled = value
 		}
 	}
 
@@ -57,6 +61,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.fpsKey -> preferences.fps.value
 		preferences.bitrateKey -> preferences.bitrate?.toString() ?: ""
 		preferences.codecKey -> preferences.codec.value
+		preferences.touchpadOverlayKey -> preferences.touchpadOverlay
 		else -> defValue
 	}
 
@@ -89,6 +94,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 				preferences.fps = fps
 			}
 			preferences.bitrateKey -> preferences.bitrate = value?.toIntOrNull()
+			preferences.touchpadOverlayKey -> { if(value != null) preferences.touchpadOverlay = value }
 			preferences.codecKey ->
 			{
 				val codec = Preferences.Codec.values().firstOrNull { it.value == value } ?: return

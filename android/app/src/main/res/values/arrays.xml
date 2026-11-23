@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="touchpad_overlay_entries">
+        <item>Always</item>
+        <item>Only while touched</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="touchpad_overlay_values">
+        <item>always</item>
+        <item>while_touch</item>
+        <item>never</item>
+    </string-array>
+</resources>

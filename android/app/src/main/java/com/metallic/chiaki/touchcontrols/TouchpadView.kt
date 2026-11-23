@@ -19,12 +19,26 @@ class TouchpadView @JvmOverloads constructor(
 	context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr)
 {
+	enum class OverlayMode { ALWAYS, WHILE_TOUCH, NEVER }
+
 	companion object
 	{
 		private const val BUTTON_PRESS_MAX_MOVE_DIST_DP = 32.0f
 		private const val SHORT_BUTTON_PRESS_DURATION_MS = 200L
 		private const val BUTTON_HOLD_DELAY_MS = 500L
+		private val ZONE_COLORS = intArrayOf(0x4C8DFF, 0x54C97A, 0xFFB020)
+		private const val ZONE_ALPHA_IDLE = 0x66
+		private const val ZONE_ALPHA_PRESSED = 0xB3
 	}
+
+	// The console only ever receives absolute coordinates, so what is drawn here
+	// is purely for the player: when the area is shown and, optionally, in which
+	// third of the pad the finger is.
+	var overlayMode = OverlayMode.WHILE_TOUCH
+
+	var zoneTint = false
+
+	private var lastTouchX = 0f
 
 	private val haptics = ButtonHaptics(context)
 
@@ -78,8 +92,8 @@ class TouchpadView @JvmOverloads constructor(
 	init
 	{
 		context.theme.obtainStyledAttributes(attrs, R.styleable.TouchpadView, 0, 0).apply {
-			drawableIdle = getDrawable(R.styleable.TouchpadView_drawableIdle)
-			drawablePressed = getDrawable(R.styleable.TouchpadView_drawablePressed)
+			drawableIdle = getDrawable(R.styleable.TouchpadView_drawableIdle)?.mutate()
+			drawablePressed = getDrawable(R.styleable.TouchpadView_drawablePressed)?.mutate()
 			recycle()
 		}
 		isClickable = true
@@ -88,11 +102,42 @@ class TouchpadView @JvmOverloads constructor(
 	override fun onDraw(canvas: Canvas)
 	{
 		super.onDraw(canvas)
-		if(pointerTouches.values.find { !it.lifted } == null)
+		val touched = pointerTouches.values.any { !it.lifted }
+
+		// Never means nothing at all, tint included: the player asked for a clean
+		// screen, not for a different kind of indicator.
+		val drawShape = when(overlayMode)
+		{
+			OverlayMode.ALWAYS -> true
+			OverlayMode.WHILE_TOUCH -> touched
+			OverlayMode.NEVER -> false
+		}
+		if(!drawShape)
 			return
-		val drawable = if(state.buttons and ControllerState.BUTTON_TOUCHPAD != 0U) drawablePressed else drawableIdle
-		drawable?.setBounds(paddingLeft, paddingTop, width - paddingRight, height - paddingBottom)
-		drawable?.draw(canvas)
+
+		val pressed = state.buttons and ControllerState.BUTTON_TOUCHPAD != 0U
+		val drawable = (if(pressed) drawablePressed else drawableIdle) ?: return
+
+		if(zoneTint && touched)
+		{
+			// Tinting the vector itself keeps the exact shape and corner radius of
+			// the pad, instead of drawing a second rectangle next to it.
+			val rgb = ZONE_COLORS[zoneOf(lastTouchX)]
+			val alpha = if(pressed) ZONE_ALPHA_PRESSED else ZONE_ALPHA_IDLE
+			drawable.setTint((alpha shl 24) or rgb)
+		}
+		else
+			drawable.setTintList(null)
+
+		drawable.setBounds(paddingLeft, paddingTop, width - paddingRight, height - paddingBottom)
+		drawable.draw(canvas)
+	}
+
+	private fun zoneOf(x: Float) = when
+	{
+		x < width / 3f -> 0
+		x < width * 2f / 3f -> 1
+		else -> 2
 	}
 
 	private fun touchX(event: MotionEvent, index: Int): UShort =
@@ -110,6 +155,7 @@ class TouchpadView @JvmOverloads constructor(
 			MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
 				state.startTouch(touchX(event, event.actionIndex), touchY(event, event.actionIndex))?.let {
 					haptics.trigger()
+					lastTouchX = event.getX(event.actionIndex)
 					val touch = Touch(it, event.getX(event.actionIndex), event.getY(event.actionIndex))
 					pointerTouches[event.getPointerId(event.actionIndex)] = touch
 					if(!buttonHeld)
@@ -141,6 +187,7 @@ class TouchpadView @JvmOverloads constructor(
 						acc
 					else
 					{
+						lastTouchX = event.getX(index)
 						it.value.onMove(event.getX(event.actionIndex), event.getY(event.actionIndex))
 						acc || state.setTouchPos(it.value.stateId, touchX(event, index), touchY(event, index))
 					}

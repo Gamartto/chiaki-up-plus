@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
+import com.gameblabla.chiaki.common.Preferences
 import com.gameblabla.chiaki.databinding.FragmentControlsBinding
 import com.gameblabla.chiaki.lib.ControllerState
 import io.reactivex.Observable
@@ -37,6 +38,17 @@ abstract class TouchControlsFragment : Fragment()
 		controllerStateProxy.flatMap { it }
 
 	var onScreenControlsEnabled: LiveData<Boolean>? = null
+
+	protected fun applyTouchpadPresentation(view: TouchpadView, preferences: Preferences)
+	{
+		view.overlayMode = when(preferences.touchpadOverlay)
+		{
+			"always" -> TouchpadView.OverlayMode.ALWAYS
+			"never" -> TouchpadView.OverlayMode.NEVER
+			else -> TouchpadView.OverlayMode.WHILE_TOUCH
+		}
+		view.zoneTint = preferences.touchpadZoneTint
+	}
 }
 
 class DefaultTouchControlsFragment : TouchControlsFragment()
@@ -56,6 +68,7 @@ class DefaultTouchControlsFragment : TouchControlsFragment()
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?)
 	{
 		super.onViewCreated(view, savedInstanceState)
+		applyTouchpadPresentation(binding.touchpadView, Preferences(requireContext()))
 		binding.dpadView.stateChangeCallback = this::dpadStateChanged
 		binding.crossButtonView.buttonPressedCallback = buttonStateChanged(ControllerState.BUTTON_CROSS)
 		binding.moonButtonView.buttonPressedCallback = buttonStateChanged(ControllerState.BUTTON_MOON)

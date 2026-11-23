@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
+import com.gameblabla.chiaki.common.Preferences
 import com.gameblabla.chiaki.databinding.FragmentTouchpadOnlyBinding
 import io.reactivex.rxkotlin.Observables.combineLatest
 
@@ -30,6 +31,7 @@ class TouchpadOnlyFragment : TouchControlsFragment()
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?)
 	{
 		super.onViewCreated(view, savedInstanceState)
+		applyTouchpadPresentation(binding.touchpadView, Preferences(requireContext()))
 		touchpadOnlyEnabled?.observe(viewLifecycleOwner, Observer {
 			view.visibility = if(it) View.VISIBLE else View.GONE
 		})

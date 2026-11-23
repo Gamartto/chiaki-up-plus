@@ -28,6 +28,27 @@
             app:defaultValue="true"
             app:icon="@drawable/ic_gamepad" />
 
+        <SwitchPreference
+            app:key="@string/preferences_auto_connect_enabled_key"
+            app:title="@string/preferences_auto_connect_enabled_title"
+            app:summary="@string/preferences_auto_connect_enabled_summary"
+            app:defaultValue="true" />
+
+        <ListPreference
+            app:key="@string/preferences_touchpad_overlay_key"
+            app:title="@string/preferences_touchpad_overlay_title"
+            app:summary="@string/preferences_touchpad_overlay_summary"
+            app:entries="@array/touchpad_overlay_entries"
+            app:entryValues="@array/touchpad_overlay_values"
+            app:useSimpleSummaryProvider="true"
+            android:defaultValue="while_touch" />
+
+        <SwitchPreference
+            app:key="@string/preferences_touchpad_zone_tint_key"
+            app:title="@string/preferences_touchpad_zone_tint_title"
+            app:summary="@string/preferences_touchpad_zone_tint_summary"
+            app:defaultValue="false" />
+
         <androidx.preference.SeekBarPreference
             app:key="@string/preferences_rumble_strength_key"
             app:title="@string/preferences_rumble_strength_title"

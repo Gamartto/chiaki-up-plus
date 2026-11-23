@@ -5,6 +5,7 @@ package com.gameblabla.chiaki.main
 import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -38,6 +39,19 @@ class MainActivity : AppCompatActivity()
 
 	private lateinit var binding: ActivityMainBinding
 	private var discoveryMenuItem: MenuItem? = null
+
+	// Auto connect is a once-per-launch action: it must not fire again when the
+	// player comes back from a stream and expects to see the list.
+	private var autoConnectAttempted = false
+	private var wakeSecondsLeft = 0
+	private var wakeRetryRunnable: Runnable? = null
+	private var hostsCache: List<DisplayHost> = listOf()
+
+	companion object
+	{
+		private const val AUTO_CONNECT_TIMEOUT_S = 60
+		private const val AUTO_CONNECT_POLL_S = 2
+	}
 
 	// Extension for dp conversion
 	private val Int.dp: Int
@@ -95,15 +109,23 @@ class MainActivity : AppCompatActivity()
 		viewModel = ViewModelProvider(this, viewModelFactory { MainViewModel(getDatabase(this), Preferences(this)) })
 			.get(MainViewModel::class.java)
 
-		val recyclerViewAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::editHost, this::deleteHost)
+		binding.autoConnectCheckBox.isChecked = Preferences(this).autoConnectEnabled
+		binding.autoConnectCheckBox.setOnCheckedChangeListener { _, checked ->
+			Preferences(this).autoConnectEnabled = checked
+		}
+
+		val recyclerViewAdapter = DisplayHostRecyclerViewAdapter(this::hostTriggered, this::wakeupHost, this::editHost, this::deleteHost, this::setAutoConnectHost)
 		binding.hostsRecyclerView.adapter = recyclerViewAdapter
 		binding.hostsRecyclerView.layoutManager = LinearLayoutManager(this)
 		viewModel.displayHosts.observe(this, Observer {
 			val top = binding.hostsRecyclerView.computeVerticalScrollOffset() == 0
 			recyclerViewAdapter.hosts = it
+			hostsCache = it
+			binding.autoConnectCheckBox.visibility = if(it.any { host -> host.isRegistered }) View.VISIBLE else View.GONE
 			if(top)
 				binding.hostsRecyclerView.scrollToPosition(0)
 			updateEmptyInfo()
+			maybeAutoConnect(it)
 		})
 
 		viewModel.discoveryActive.observe(this, Observer { active ->
@@ -209,13 +231,6 @@ class MainActivity : AppCompatActivity()
 		val registeredHost = host.registeredHost
 		if(registeredHost != null)
 		{
-			fun connect() {
-				val connectInfo = ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, Preferences(this).videoProfile)
-				Intent(this, StreamActivity::class.java).let {
-					it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
-					startActivity(it)
-				}
-			}
 
 			if(host is DiscoveredDisplayHost && host.discoveredHost.state == DiscoveryHost.State.STANDBY)
 			{
@@ -225,14 +240,14 @@ class MainActivity : AppCompatActivity()
 						wakeupHost(host)
 					}
 					.setNeutralButton(R.string.action_connect_immediately) { _, _ ->
-						connect()
+						connectTo(host)
 					}
 					.setNegativeButton(R.string.action_connect_cancel_connect) { _, _ -> }
 					.create()
 					.show()
 			}
 			else
-				connect()
+				connectTo(host)
 		}
 		else
 		{
@@ -245,6 +260,104 @@ class MainActivity : AppCompatActivity()
 			}
 		}
 	}
+
+	private fun setAutoConnectHost(host: DisplayHost)
+	{
+		val registeredHost = host.registeredHost ?: return
+		Preferences(this).autoConnectHostId = registeredHost.id
+		MaterialAlertDialogBuilder(this)
+			.setMessage(getString(R.string.autoconnect_host_set, host.name ?: host.host))
+			.setPositiveButton(android.R.string.ok) { _, _ -> }
+			.create()
+			.show()
+	}
+
+	private fun maybeAutoConnect(hosts: List<DisplayHost>)
+	{
+		if(autoConnectAttempted)
+			return
+		val preferences = Preferences(this)
+		if(!preferences.autoConnectEnabled)
+			return
+		val registered = hosts.filter { it.isRegistered }
+		if(registered.isEmpty())
+			return
+		val target = if(registered.size == 1)
+			registered[0]
+		else
+			registered.find { it.registeredHost?.id == preferences.autoConnectHostId } ?: return
+		autoConnectAttempted = true
+		connectWithWake(target)
+	}
+
+	private fun connectTo(host: DisplayHost)
+	{
+		val registeredHost = host.registeredHost ?: return
+		val connectInfo = ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, Preferences(this).videoProfile)
+		Intent(this, StreamActivity::class.java).let {
+			it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
+			startActivity(it)
+		}
+	}
+
+	// In rest mode the console only answers once it has woken up, so the wake packet
+	// is sent and the discovery list is polled until it reports the console ready.
+	private fun connectWithWake(host: DisplayHost)
+	{
+		val standby = host is DiscoveredDisplayHost && host.discoveredHost.state == DiscoveryHost.State.STANDBY
+		if(!standby)
+		{
+			connectTo(host)
+			return
+		}
+
+		wakeSecondsLeft = AUTO_CONNECT_TIMEOUT_S
+		binding.autoConnectStatus.visibility = View.VISIBLE
+		binding.autoConnectStatus.text = getString(R.string.autoconnect_waking, wakeSecondsLeft)
+		wakeupHost(host)
+
+		val tick = object: Runnable
+		{
+			override fun run()
+			{
+				val current = hostsCache.find { it.host == host.host }
+				val awake = current != null && (current !is DiscoveredDisplayHost ||
+						current.discoveredHost.state != DiscoveryHost.State.STANDBY)
+				if(awake)
+				{
+					stopWakeWait()
+					connectTo(current!!)
+					return
+				}
+				if(wakeSecondsLeft <= 0)
+				{
+					stopWakeWait()
+					Toast.makeText(this@MainActivity, R.string.autoconnect_failed, Toast.LENGTH_LONG).show()
+					return
+				}
+				wakeSecondsLeft -= AUTO_CONNECT_POLL_S
+				binding.autoConnectStatus.text = getString(R.string.autoconnect_waking, wakeSecondsLeft)
+				handler.postDelayed(this, AUTO_CONNECT_POLL_S * 1000L)
+			}
+		}
+		wakeRetryRunnable = tick
+		handler.postDelayed(tick, AUTO_CONNECT_POLL_S * 1000L)
+	}
+
+	private fun stopWakeWait()
+	{
+		wakeRetryRunnable?.let { handler.removeCallbacks(it) }
+		wakeRetryRunnable = null
+		binding.autoConnectStatus.visibility = View.GONE
+	}
+
+	override fun onDestroy()
+	{
+		stopWakeWait()
+		super.onDestroy()
+	}
+
+	private val handler = android.os.Handler(android.os.Looper.getMainLooper())
 
 	private fun wakeupHost(host: DisplayHost)
 	{

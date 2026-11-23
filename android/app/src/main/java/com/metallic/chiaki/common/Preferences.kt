@@ -103,6 +103,27 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getInt(rumbleStrengthKey, 100).coerceIn(0, 150)
 		set(value) { sharedPreferences.edit().putInt(rumbleStrengthKey, value.coerceIn(0, 150)).apply() }
 
+	val autoConnectEnabledKey get() = resources.getString(R.string.preferences_auto_connect_enabled_key)
+	var autoConnectEnabled
+		get() = sharedPreferences.getBoolean(autoConnectEnabledKey, true)
+		set(value) { sharedPreferences.edit().putBoolean(autoConnectEnabledKey, value).apply() }
+
+	// Which console to open when more than one is registered; -1 means none chosen.
+	val autoConnectHostIdKey get() = resources.getString(R.string.preferences_auto_connect_host_id_key)
+	var autoConnectHostId
+		get() = sharedPreferences.getLong(autoConnectHostIdKey, -1L)
+		set(value) { sharedPreferences.edit().putLong(autoConnectHostIdKey, value).apply() }
+
+	val touchpadOverlayKey get() = resources.getString(R.string.preferences_touchpad_overlay_key)
+	var touchpadOverlay
+		get() = sharedPreferences.getString(touchpadOverlayKey, "while_touch") ?: "while_touch"
+		set(value) { sharedPreferences.edit().putString(touchpadOverlayKey, value).apply() }
+
+	val touchpadZoneTintKey get() = resources.getString(R.string.preferences_touchpad_zone_tint_key)
+	var touchpadZoneTint
+		get() = sharedPreferences.getBoolean(touchpadZoneTintKey, false)
+		set(value) { sharedPreferences.edit().putBoolean(touchpadZoneTintKey, value).apply() }
+
 	val statsAtBottomKey get() = resources.getString(R.string.preferences_stats_at_bottom_key)
 	var statsAtBottom
 		get() = sharedPreferences.getBoolean(statsAtBottomKey, false)
