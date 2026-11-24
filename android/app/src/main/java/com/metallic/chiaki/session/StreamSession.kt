@@ -28,6 +28,13 @@ class StreamSession(connectInfo: ConnectInfo, val logManager: LogManager, val lo
 	var session: Session? = null
 		private set
 
+	// Every event carries the generation of the session that produced it. stop()
+	// makes the old session emit Quit(STOPPED) from its own thread, and that event
+	// arrives after the replacement has been asked for: without this it landed as a
+	// real state change, and the screen closed itself while the new session was
+	// still connecting. Events from a stale generation are dropped.
+	private var generation = 0
+
 	private val _state = MutableLiveData<StreamState>(StreamStateIdle)
 	val state: LiveData<StreamState> get() = _state
 	private val _rumbleState = MutableLiveData<RumbleEvent>(RumbleEvent(0U, 0U))
@@ -70,6 +77,7 @@ class StreamSession(connectInfo: ConnectInfo, val logManager: LogManager, val lo
 
 	fun shutdown()
 	{
+		generation++
 		session?.stop()
 		session?.dispose()
 		session = null
@@ -100,9 +108,13 @@ class StreamSession(connectInfo: ConnectInfo, val logManager: LogManager, val lo
 			return
 		try
 		{
+			val gen = generation
 			val session = Session(connectInfo, logManager.createNewFile().file.absolutePath, logVerbose)
 			_state.value = StreamStateConnecting
-			session.eventCallback = this::eventCallback
+			session.eventCallback = { event ->
+				if(gen == generation)
+					eventCallback(event)
+			}
 			session.start()
 			val surface = surface
 			if(surface != null)
