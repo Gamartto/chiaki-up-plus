@@ -327,8 +327,18 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				android.R.layout.simple_spinner_dropdown_item, hiddenPsPositionLabels)
 			setSelection(hiddenPsPositions.indexOf(preferences.hiddenPsPosition).coerceAtLeast(0))
 			isEnabled = enabledSwitch.isChecked
+			// Applies as soon as it is picked: moving the button is a live tweak,
+			// not a form to submit.
+			onItemSelectedListener = object: android.widget.AdapterView.OnItemSelectedListener
+			{
+				override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long)
+				{
+					preferences.hiddenPsPosition = hiddenPsPositions.getOrElse(position) { "top_center" }
+					setupHiddenPsHotspot()
+				}
+				override fun onNothingSelected(parent: android.widget.AdapterView<*>?) { }
+			}
 		}
-		enabledSwitch.setOnCheckedChangeListener { _, checked -> spinner.isEnabled = checked }
 
 		val visibilityLabel = TextView(this).apply {
 			text = getString(R.string.stream_ps_visibility)
@@ -341,8 +351,20 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			isEnabled = enabledSwitch.isChecked
 		}
 		enabledSwitch.setOnCheckedChangeListener { _, checked ->
+			preferences.hiddenPsEnabled = checked
 			spinner.isEnabled = checked
 			visibilitySpinner.isEnabled = checked
+			setupHiddenPsHotspot()
+		}
+
+		visibilitySpinner.onItemSelectedListener = object: android.widget.AdapterView.OnItemSelectedListener
+		{
+			override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long)
+			{
+				preferences.hiddenPsVisibility = hiddenPsVisibilities.getOrElse(position) { "never" }
+				setupHiddenPsHotspot()
+			}
+			override fun onNothingSelected(parent: android.widget.AdapterView<*>?) { }
 		}
 
 		val container = LinearLayout(this).apply {
@@ -358,17 +380,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		MaterialAlertDialogBuilder(this)
 			.setTitle(R.string.stream_ps_dialog_title)
 			.setView(container)
-			.setPositiveButton(android.R.string.ok) { _, _ ->
-				preferences.hiddenPsEnabled = enabledSwitch.isChecked
-				preferences.hiddenPsPosition =
-					hiddenPsPositions.getOrElse(spinner.selectedItemPosition) { "top_center" }
-				preferences.hiddenPsVisibility =
-					hiddenPsVisibilities.getOrElse(visibilitySpinner.selectedItemPosition) { "never" }
-				setupHiddenPsHotspot()
-				if(!enabledSwitch.isChecked)
-					binding.hiddenPsHotspot.visibility = View.GONE
-			}
-			.setNegativeButton(android.R.string.cancel, null)
+			.setPositiveButton(android.R.string.ok) { _, _ -> }
 			.show()
 	}
 
@@ -427,10 +439,15 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				if(newValue != preferences.bitrate)
 				{
 					preferences.bitrate = newValue
-					// Drop the session first and give the console a moment before
-					// asking for a new one, otherwise it answers RP_IN_USE.
+					// Rebuilding the session in place instead of recreating the
+					// activity: the ViewModel (and its ConnectInfo) survive a
+					// recreate, so that path reopened with the old bitrate and left
+					// the screen dead. The console still needs a moment to release
+					// the previous session, hence the grace delay.
 					viewModel.session.shutdown()
-					reconnectHandler.postDelayed({ recreate() }, SESSION_RELEASE_GRACE_MS)
+					reconnectHandler.postDelayed({
+						viewModel.session.restartWithProfile(Preferences(this).videoProfile)
+					}, SESSION_RELEASE_GRACE_MS)
 				}
 			}
 			.setNegativeButton(android.R.string.cancel, null)

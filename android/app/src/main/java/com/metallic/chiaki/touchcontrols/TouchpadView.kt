@@ -159,9 +159,18 @@ class TouchpadView @JvmOverloads constructor(
 			return
 		val cx = lastTouchX.coerceIn(0f, width.toFloat())
 		val cy = lastTouchY.coerceIn(0f, height.toFloat())
+		// Multi-stop gradient and dithering: a two-stop radial over a large area
+		// bands visibly on an 8-bit surface, which reads as rings around the finger.
+		glowPaint.isDither = true
+		val r = rgb and 0xFFFFFF
 		glowPaint.shader = RadialGradient(cx, cy, radius,
-			(GLOW_ALPHA shl 24) or (rgb and 0xFFFFFF),
-			0x00000000,
+			intArrayOf(
+				(GLOW_ALPHA shl 24) or r,
+				(0x5A shl 24) or r,
+				(0x24 shl 24) or r,
+				0x00000000
+			),
+			floatArrayOf(0f, 0.45f, 0.78f, 1f),
 			Shader.TileMode.CLAMP)
 
 		val corner = width * PAD_CORNER_RATIO

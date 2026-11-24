@@ -86,6 +86,8 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 
 	private var holding = false
 	private var fired = false
+	private var animatedAlpha = 0f
+	private var animator: android.animation.ValueAnimator? = null
 
 	private val holdRunnable = Runnable {
 		if(holding && !fired)
@@ -178,7 +180,7 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 		{
 			Visibility.NEVER -> false
 			Visibility.ALWAYS -> true
-			Visibility.ON_PRESS -> holding
+			Visibility.ON_PRESS -> animatedAlpha > 0.01f
 		}
 		if(!shouldDraw)
 			return
@@ -193,9 +195,12 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 			Position.BOTTOM_CENTER -> Triple(RectF(0f, 0f, 2 * r, 2 * r), 180f, 180f)
 			Position.BOTTOM_RIGHT -> Triple(RectF(0f, 0f, 2 * r, 2 * r), 180f, 90f)
 		}
-		val fillAlpha = if(holding) FILL_ALPHA_HELD else FILL_ALPHA_IDLE
+		val baseAlpha = if(holding) FILL_ALPHA_HELD else FILL_ALPHA_IDLE
+		val factor = if(visibilityMode == Visibility.ON_PRESS) animatedAlpha else 1f
+		val fillAlpha = (baseAlpha * factor).toInt().coerceIn(0, 255)
+		val edgeAlpha = (EDGE_ALPHA * factor).toInt().coerceIn(0, 255)
 		areaFill.color = (fillAlpha shl 24) or WHITE
-		areaEdge.color = (EDGE_ALPHA shl 24) or WHITE
+		areaEdge.color = (edgeAlpha shl 24) or WHITE
 		areaEdge.strokeWidth = (r * 0.04f).coerceAtLeast(2f)
 		arcRect.set(rect)
 		canvas.drawArc(arcRect, start, sweep, true, areaFill)
@@ -205,8 +210,19 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 	private fun setHolding(value: Boolean)
 	{
 		holding = value
-		if(visibilityMode == Visibility.ON_PRESS)
-			invalidate()
+		if(visibilityMode != Visibility.ON_PRESS)
+			return
+		// Fades in and out instead of popping: at these alphas an instant change is
+		// easy to miss over a bright game image.
+		animator?.cancel()
+		animator = android.animation.ValueAnimator.ofFloat(animatedAlpha, if(value) 1f else 0f).apply {
+			duration = if(value) 150L else 250L
+			addUpdateListener {
+				animatedAlpha = it.animatedValue as Float
+				invalidate()
+			}
+			start()
+		}
 	}
 
 	private fun cancelHold()

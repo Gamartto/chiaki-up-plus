@@ -18,8 +18,13 @@ data class StreamStateCreateError(val error: CreateError): StreamState()
 data class StreamStateQuit(val reason: QuitReason, val reasonString: String?): StreamState()
 data class StreamStateLoginPinRequest(val pinIncorrect: Boolean): StreamState()
 
-class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, val logVerbose: Boolean, val input: StreamInput)
+class StreamSession(connectInfo: ConnectInfo, val logManager: LogManager, val logVerbose: Boolean, val input: StreamInput)
 {
+	// Mutable because the video profile is part of the launch specification: a new
+	// bitrate means rebuilding the session, not tweaking the running one.
+	var connectInfo: ConnectInfo = connectInfo
+		private set
+
 	var session: Session? = null
 		private set
 
@@ -70,6 +75,18 @@ class StreamSession(val connectInfo: ConnectInfo, val logManager: LogManager, va
 		session = null
 		_state.value = StreamStateIdle
 		//surfaceTexture?.release()
+	}
+
+	/**
+	 * Drops the current session and opens a new one with [profile]. Used when the
+	 * bitrate changes: the console reads it from the launch spec and never
+	 * renegotiates, so the only way to apply it is a fresh session.
+	 */
+	fun restartWithProfile(profile: ConnectVideoProfile)
+	{
+		shutdown()
+		connectInfo = connectInfo.copy(videoProfile = profile)
+		resume()
 	}
 
 	fun pause()
