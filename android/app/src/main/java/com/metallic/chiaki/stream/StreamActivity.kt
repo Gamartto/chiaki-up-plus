@@ -47,6 +47,9 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	{
 		const val EXTRA_CONNECT_INFO = "connect_info"
 		private const val HIDE_UI_TIMEOUT_MS = 2000L
+		private const val RP_IN_USE_MAX_RETRIES = 4
+		private const val RP_IN_USE_RETRY_MS = 2500L
+		private const val SESSION_RELEASE_GRACE_MS = 2500L
 	}
 
 	private lateinit var viewModel: StreamViewModel
@@ -176,6 +179,11 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	// counters, packet loss from the lib. All four values are cumulative, so the
 	// overlay shows the delta against the previous sample.
 	private var keyboardDialog: androidx.appcompat.app.AlertDialog? = null
+
+	// A reconnect right after dropping a session is refused with RP_IN_USE while
+	// the console finishes releasing it, so retry quietly before showing the dialog.
+	private var rpInUseRetries = 0
+	private val reconnectHandler = Handler(Looper.getMainLooper())
 	private var suppressSwitchCallback = false
 	private val statsHandler = Handler(Looper.getMainLooper())
 	private var statsLastSample = 0L
@@ -282,7 +290,10 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				if(newValue != preferences.bitrate)
 				{
 					preferences.bitrate = newValue
-					recreate()
+					// Drop the session first and give the console a moment before
+					// asking for a new one, otherwise it answers RP_IN_USE.
+					viewModel.session.shutdown()
+					reconnectHandler.postDelayed({ recreate() }, SESSION_RELEASE_GRACE_MS)
 				}
 			}
 			.setNegativeButton(android.R.string.cancel, null)
@@ -403,6 +414,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 
 	override fun onDestroy()
 	{
+		reconnectHandler.removeCallbacksAndMessages(null)
 		super.onDestroy()
 		controlsDisposable.dispose()
 	}
@@ -495,6 +507,13 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			{
 				if(dialogContents != StreamQuitDialog)
 				{
+					if(state.reason.isRemotePlayInUse && rpInUseRetries < RP_IN_USE_MAX_RETRIES)
+					{
+						rpInUseRetries++
+						reconnectHandler.postDelayed({ reconnect() }, RP_IN_USE_RETRY_MS)
+						return
+					}
+
 					if(state.reason.isError)
 					{
 						dialog?.dismiss()
@@ -574,6 +593,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 					dialog.show()
 				}
 			}
+
+			StreamStateConnected -> rpInUseRetries = 0
 
 			else -> {}
 		}

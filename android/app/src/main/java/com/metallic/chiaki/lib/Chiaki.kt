@@ -311,9 +311,20 @@ data class ControllerState constructor(
 
 class QuitReason(val value: Int)
 {
+	companion object
+	{
+		// Order of ChiakiQuitReason in lib/include/chiaki/session.h: NONE, STOPPED,
+		// SESSION_REQUEST_UNKNOWN, CONNECTION_REFUSED, RP_IN_USE.
+		const val SESSION_REQUEST_RP_IN_USE = 4
+	}
+
 	override fun toString() = ChiakiNative.quitReasonToString(value)
 
 	val isError = ChiakiNative.quitReasonIsError(value)
+
+	// The console was still holding the previous session when we asked for a new
+	// one. Happens for a couple of seconds after a reconnect.
+	val isRemotePlayInUse get() = value == SESSION_REQUEST_RP_IN_USE
 }
 
 sealed class Event
