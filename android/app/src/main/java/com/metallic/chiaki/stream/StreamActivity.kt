@@ -29,6 +29,7 @@ import com.gameblabla.chiaki.lib.ConnectInfo
 import com.gameblabla.chiaki.lib.ConnectVideoProfile
 import com.gameblabla.chiaki.session.*
 import com.gameblabla.chiaki.touchcontrols.DefaultTouchControlsFragment
+import com.gameblabla.chiaki.touchcontrols.HiddenPsHotspotView
 import com.gameblabla.chiaki.touchcontrols.TouchControlsFragment
 import com.gameblabla.chiaki.touchcontrols.TouchpadOnlyFragment
 import io.reactivex.disposables.CompositeDisposable
@@ -141,6 +142,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		viewModel.session.state.observe(this, Observer { this.stateChanged(it) })
 		adjustStreamViewAspect()
 
+		setupHiddenPsHotspot()
 		updateBitrateButton()
 		binding.bitrateButton.setOnClickListener { showBitrateDialog() }
 
@@ -233,6 +235,32 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 
 		keyboardDialog = dialog
 		dialog.show()
+	}
+
+	// The hotspot is laid out by the view itself from the radius and position, so
+	// here it is only wired to the same tap the Start + Select combo produces.
+	private fun setupHiddenPsHotspot()
+	{
+		val preferences = Preferences(this)
+		val hotspot = binding.hiddenPsHotspot
+		if(!preferences.hiddenPsEnabled)
+		{
+			hotspot.visibility = View.GONE
+			return
+		}
+		val density = resources.displayMetrics.density
+		hotspot.radiusPx = preferences.hiddenPsSize * density
+		hotspot.position = when(preferences.hiddenPsPosition)
+		{
+			"top_left" -> HiddenPsHotspotView.Position.TOP_LEFT
+			"top_right" -> HiddenPsHotspotView.Position.TOP_RIGHT
+			"bottom_left" -> HiddenPsHotspotView.Position.BOTTOM_LEFT
+			"bottom_center" -> HiddenPsHotspotView.Position.BOTTOM_CENTER
+			"bottom_right" -> HiddenPsHotspotView.Position.BOTTOM_RIGHT
+			else -> HiddenPsHotspotView.Position.TOP_CENTER
+		}
+		hotspot.onTrigger = { viewModel.session.input.sendPsTap() }
+		hotspot.visibility = View.VISIBLE
 	}
 
 	private fun currentBitrateMbps() = (Preferences(this).bitrate ?: 0) / 1000
@@ -438,6 +466,10 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 
 	private fun showOverlay()
 	{
+		// While the UI is up the hotspot steps aside: at the bottom it would sit on
+		// top of the overlay bar and steal touches from its switches.
+		if(Preferences(this).hiddenPsEnabled)
+			binding.hiddenPsHotspot.visibility = View.GONE
 		binding.overlay.isVisible = true
 		binding.overlay.animate()
 			.alpha(1.0f)
@@ -460,6 +492,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 
 	private fun hideOverlay()
 	{
+		if(Preferences(this).hiddenPsEnabled)
+			binding.hiddenPsHotspot.visibility = View.VISIBLE
 		binding.overlay.animate()
 			.alpha(0.0f)
 			.setListener(object: AnimatorListenerAdapter()

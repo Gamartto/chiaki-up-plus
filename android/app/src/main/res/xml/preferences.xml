@@ -34,6 +34,31 @@
             app:summary="@string/preferences_auto_connect_enabled_summary"
             app:defaultValue="true" />
 
+        <SwitchPreference
+            app:key="@string/preferences_hidden_ps_enabled_key"
+            app:title="@string/preferences_hidden_ps_enabled_title"
+            app:summary="@string/preferences_hidden_ps_enabled_summary"
+            app:defaultValue="false" />
+
+        <ListPreference
+            app:key="@string/preferences_hidden_ps_position_key"
+            app:title="@string/preferences_hidden_ps_position_title"
+            app:summary="@string/preferences_hidden_ps_position_summary"
+            app:entries="@array/hidden_ps_position_entries"
+            app:entryValues="@array/hidden_ps_position_values"
+            app:useSimpleSummaryProvider="true"
+            android:defaultValue="top_center" />
+
+        <androidx.preference.SeekBarPreference
+            app:key="@string/preferences_hidden_ps_size_key"
+            app:title="@string/preferences_hidden_ps_size_title"
+            app:summary="@string/preferences_hidden_ps_size_summary"
+            android:max="120"
+            app:min="48"
+            app:seekBarIncrement="8"
+            android:defaultValue="72"
+            app:showSeekBarValue="true" />
+
         <ListPreference
             app:key="@string/preferences_touchpad_overlay_key"
             app:title="@string/preferences_touchpad_overlay_title"

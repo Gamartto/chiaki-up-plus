@@ -113,6 +113,21 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getInt(rumbleStrengthKey, 100).coerceIn(0, 150)
 		set(value) { sharedPreferences.edit().putInt(rumbleStrengthKey, value.coerceIn(0, 150)).apply() }
 
+	val hiddenPsEnabledKey get() = resources.getString(R.string.preferences_hidden_ps_enabled_key)
+	var hiddenPsEnabled
+		get() = sharedPreferences.getBoolean(hiddenPsEnabledKey, false)
+		set(value) { sharedPreferences.edit().putBoolean(hiddenPsEnabledKey, value).apply() }
+
+	val hiddenPsPositionKey get() = resources.getString(R.string.preferences_hidden_ps_position_key)
+	var hiddenPsPosition
+		get() = sharedPreferences.getString(hiddenPsPositionKey, "top_center") ?: "top_center"
+		set(value) { sharedPreferences.edit().putString(hiddenPsPositionKey, value).apply() }
+
+	val hiddenPsSizeKey get() = resources.getString(R.string.preferences_hidden_ps_size_key)
+	var hiddenPsSize
+		get() = sharedPreferences.getInt(hiddenPsSizeKey, 72).coerceIn(48, 120)
+		set(value) { sharedPreferences.edit().putInt(hiddenPsSizeKey, value.coerceIn(48, 120)).apply() }
+
 	val autoConnectEnabledKey get() = resources.getString(R.string.preferences_auto_connect_enabled_key)
 	var autoConnectEnabled
 		get() = sharedPreferences.getBoolean(autoConnectEnabledKey, true)

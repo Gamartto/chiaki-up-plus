@@ -10,4 +10,20 @@
         <item>while_touch</item>
         <item>never</item>
     </string-array>
+    <string-array name="hidden_ps_position_entries">
+        <item>Top left</item>
+        <item>Top centre</item>
+        <item>Top right</item>
+        <item>Bottom left</item>
+        <item>Bottom centre</item>
+        <item>Bottom right</item>
+    </string-array>
+    <string-array name="hidden_ps_position_values">
+        <item>top_left</item>
+        <item>top_center</item>
+        <item>top_right</item>
+        <item>bottom_left</item>
+        <item>bottom_center</item>
+        <item>bottom_right</item>
+    </string-array>
 </resources>

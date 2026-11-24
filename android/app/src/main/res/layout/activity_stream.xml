@@ -154,4 +154,12 @@
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <!-- Above the overlay on purpose: invisible, but on top of everything so it
+         keeps working while the rest of the UI is hidden. -->
+    <com.gameblabla.chiaki.touchcontrols.HiddenPsHotspotView
+        android:id="@+id/hiddenPsHotspot"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
 </FrameLayout>

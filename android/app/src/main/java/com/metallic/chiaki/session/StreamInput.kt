@@ -68,7 +68,9 @@ class StreamInput(val context: Context, val preferences: Preferences)
 	// Wired by the activity to the statistics overlay.
 	var statsToggleCallback: (() -> Unit)? = null
 
-	private fun sendPsTap()
+	// Also used by the hidden hotspot in the stream view, which is why it is not
+	// private: the combo and the invisible button produce the same 80 ms tap.
+	fun sendPsTap()
 	{
 		keyControllerState.buttons = keyControllerState.buttons or ControllerState.BUTTON_PS
 		controllerStateUpdated()

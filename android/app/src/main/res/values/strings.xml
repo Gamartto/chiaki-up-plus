@@ -95,6 +95,15 @@
     <string name="preferences_swap_cross_moon_summary">Swap face buttons if default mapping is incorrect (e.g. for 8BitDo controllers)</string>
     <string name="preferences_ps_combo_title">Controller Shortcuts</string>
     <string name="preferences_ps_combo_summary">Start + Select presses the PS button. L1 + R1 + Start shows the stream statistics. Options, Share, L1 and R1 still work on their own.</string>
+    <string name="preferences_hidden_ps_enabled_title">Hidden PS button</string>
+    <string name="preferences_hidden_ps_enabled_summary">An invisible PS button along the edge of the screen. Hold it for 0.6 s; nothing is drawn, so it never covers the game or the touchpad.</string>
+    <string name="preferences_hidden_ps_enabled_key">hidden_ps_enabled</string>
+    <string name="preferences_hidden_ps_position_title">Hidden PS position</string>
+    <string name="preferences_hidden_ps_position_summary">Corners take a quarter circle, the edge centres a half circle.</string>
+    <string name="preferences_hidden_ps_position_key">hidden_ps_position</string>
+    <string name="preferences_hidden_ps_size_title">Hidden PS size</string>
+    <string name="preferences_hidden_ps_size_summary">Radius of the invisible area, in dp. Bigger is easier to hit and easier to hit by accident.</string>
+    <string name="preferences_hidden_ps_size_key">hidden_ps_size</string>
     <string name="preferences_auto_connect_enabled_title">Auto connect</string>
     <string name="preferences_auto_connect_enabled_summary">On launch, go straight to the console instead of showing the list: wake it if it is in rest mode, connect if it is already on. With more than one console registered, the one marked in the list is used.</string>
     <string name="preferences_auto_connect_enabled_key">auto_connect_enabled</string>
