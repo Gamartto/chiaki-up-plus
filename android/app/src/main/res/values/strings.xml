@@ -105,6 +105,10 @@
     <string name="stream_ps_dialog_title">Hidden PS button</string>
     <string name="stream_ps_enabled">Enabled</string>
     <string name="stream_ps_position">Position</string>
+    <string name="preferences_hidden_ps_visibility_title">Hidden PS visibility</string>
+    <string name="preferences_hidden_ps_visibility_summary">Same three states as the touchpad indicator: never, always, or only while the hold is in progress. Drawn in the touchpad\u2019s centre white.</string>
+    <string name="preferences_hidden_ps_visibility_key">hidden_ps_visibility</string>
+    <string name="stream_ps_visibility">Visibility</string>
     <string name="preferences_hidden_ps_size_title">Hidden PS size</string>
     <string name="preferences_hidden_ps_size_summary">Radius of the invisible area, in dp. Bigger is easier to hit and easier to hit by accident.</string>
     <string name="preferences_hidden_ps_size_key">hidden_ps_size</string>

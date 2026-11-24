@@ -3,6 +3,9 @@
 package com.gameblabla.chiaki.touchcontrols
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
@@ -26,9 +29,19 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 {
 	enum class Position { TOP_LEFT, TOP_CENTER, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT }
 
+	/** Mirrors the touchpad indicator: never drawn, always drawn, or only on hold. */
+	enum class Visibility { NEVER, ALWAYS, ON_PRESS }
+
 	companion object
 	{
 		private const val HOLD_MS = 600L
+
+		// Same white the touchpad uses for its centre zone, so this reads as part of
+		// the same overlay instead of a separate widget.
+		private const val WHITE = 0xFFFFFF
+		private const val FILL_ALPHA_IDLE = 0x26
+		private const val FILL_ALPHA_HELD = 0x4D
+		private const val EDGE_ALPHA = 0x66
 	}
 
 	private val haptics = ButtonHaptics(context)
@@ -53,6 +66,21 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 		}
 
 	var onTrigger: (() -> Unit)? = null
+
+	var visibilityMode = Visibility.NEVER
+		set(value)
+		{
+			field = value
+			invalidate()
+		}
+
+	// Same white the touchpad uses for its centre zone, so the button reads as part
+	// of the same overlay instead of a separate widget.
+	private val areaFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+	private val areaEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+	private val arcRect = RectF()
+
+
 
 
 
@@ -121,8 +149,8 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 			{
 				if(!containsTouch(event.x, event.y))
 					return false
-				holding = true
 				fired = false
+				setHolding(true)
 				handler.postDelayed(holdRunnable, HOLD_MS)
 				return true
 			}
@@ -141,9 +169,49 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 		return false
 	}
 
+	override fun onDraw(canvas: Canvas)
+	{
+		super.onDraw(canvas)
+		if(radiusPx <= 0f)
+			return
+		val shouldDraw = when(visibilityMode)
+		{
+			Visibility.NEVER -> false
+			Visibility.ALWAYS -> true
+			Visibility.ON_PRESS -> holding
+		}
+		if(!shouldDraw)
+			return
+
+		val r = radiusPx
+		val (rect, start, sweep) = when(position)
+		{
+			Position.TOP_LEFT -> Triple(RectF(-r, -r, r, r), 0f, 90f)
+			Position.TOP_CENTER -> Triple(RectF(0f, -r, 2 * r, r), 0f, 180f)
+			Position.TOP_RIGHT -> Triple(RectF(0f, -r, 2 * r, r), 90f, 90f)
+			Position.BOTTOM_LEFT -> Triple(RectF(-r, 0f, r, 2 * r), 270f, 90f)
+			Position.BOTTOM_CENTER -> Triple(RectF(0f, 0f, 2 * r, 2 * r), 180f, 180f)
+			Position.BOTTOM_RIGHT -> Triple(RectF(0f, 0f, 2 * r, 2 * r), 180f, 90f)
+		}
+		val fillAlpha = if(holding) FILL_ALPHA_HELD else FILL_ALPHA_IDLE
+		areaFill.color = (fillAlpha shl 24) or WHITE
+		areaEdge.color = (EDGE_ALPHA shl 24) or WHITE
+		areaEdge.strokeWidth = (r * 0.04f).coerceAtLeast(2f)
+		arcRect.set(rect)
+		canvas.drawArc(arcRect, start, sweep, true, areaFill)
+		canvas.drawArc(arcRect, start, sweep, true, areaEdge)
+	}
+
+	private fun setHolding(value: Boolean)
+	{
+		holding = value
+		if(visibilityMode == Visibility.ON_PRESS)
+			invalidate()
+	}
+
 	private fun cancelHold()
 	{
-		holding = false
+		setHolding(false)
 		handler.removeCallbacks(holdRunnable)
 	}
 }

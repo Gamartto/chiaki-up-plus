@@ -271,6 +271,12 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			"bottom_right" -> HiddenPsHotspotView.Position.BOTTOM_RIGHT
 			else -> HiddenPsHotspotView.Position.TOP_CENTER
 		}
+		hotspot.visibilityMode = when(preferences.hiddenPsVisibility)
+		{
+			"always" -> HiddenPsHotspotView.Visibility.ALWAYS
+			"while_press" -> HiddenPsHotspotView.Visibility.ON_PRESS
+			else -> HiddenPsHotspotView.Visibility.NEVER
+		}
 		hotspot.onTrigger = { viewModel.session.input.sendPsTap() }
 		hotspot.visibility = View.VISIBLE
 	}
@@ -279,6 +285,10 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		"top_left", "top_center", "top_right",
 		"bottom_left", "bottom_center", "bottom_right"
 	)
+
+	private val hiddenPsVisibilities = arrayOf("never", "always", "while_press")
+
+	private val hiddenPsVisibilityLabels = arrayOf("Never", "Always", "While held")
 
 	private val hiddenPsPositionLabels = arrayOf(
 		"Top left", "Top centre", "Top right",
@@ -309,10 +319,27 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		}
 		enabledSwitch.setOnCheckedChangeListener { _, checked -> spinner.isEnabled = checked }
 
+		val visibilityLabel = TextView(this).apply {
+			text = getString(R.string.stream_ps_visibility)
+			setPadding(0, padding / 2, 0, 0)
+		}
+		val visibilitySpinner = android.widget.Spinner(this).apply {
+			adapter = android.widget.ArrayAdapter(this@StreamActivity,
+				android.R.layout.simple_spinner_dropdown_item, hiddenPsVisibilityLabels)
+			setSelection(hiddenPsVisibilities.indexOf(preferences.hiddenPsVisibility).coerceAtLeast(0))
+			isEnabled = enabledSwitch.isChecked
+		}
+		enabledSwitch.setOnCheckedChangeListener { _, checked ->
+			spinner.isEnabled = checked
+			visibilitySpinner.isEnabled = checked
+		}
+
 		val container = LinearLayout(this).apply {
 			orientation = LinearLayout.VERTICAL
 			setPadding(padding, 0, padding, 0)
 			addView(enabledSwitch)
+			addView(visibilityLabel)
+			addView(visibilitySpinner)
 			addView(positionLabel)
 			addView(spinner)
 		}
@@ -324,6 +351,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				preferences.hiddenPsEnabled = enabledSwitch.isChecked
 				preferences.hiddenPsPosition =
 					hiddenPsPositions.getOrElse(spinner.selectedItemPosition) { "top_center" }
+				preferences.hiddenPsVisibility =
+					hiddenPsVisibilities.getOrElse(visibilitySpinner.selectedItemPosition) { "never" }
 				setupHiddenPsHotspot()
 				if(!enabledSwitch.isChecked)
 					binding.hiddenPsHotspot.visibility = View.GONE

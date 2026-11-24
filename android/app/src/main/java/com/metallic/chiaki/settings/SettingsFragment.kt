@@ -54,7 +54,8 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 			Preferences.Codec.values().firstOrNull { it.value == v }?.let { preferences.codec = it }
 		}),
 		preferences.touchpadOverlayKey to Binding({ preferences.touchpadOverlay }, { v: String -> preferences.touchpadOverlay = v }),
-		preferences.hiddenPsPositionKey to Binding({ preferences.hiddenPsPosition }, { v: String -> preferences.hiddenPsPosition = v })
+		preferences.hiddenPsPositionKey to Binding({ preferences.hiddenPsPosition }, { v: String -> preferences.hiddenPsPosition = v }),
+		preferences.hiddenPsVisibilityKey to Binding({ preferences.hiddenPsVisibility }, { v: String -> preferences.hiddenPsVisibility = v })
 	)
 
 	private val ints = mapOf(

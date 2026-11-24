@@ -26,4 +26,14 @@
         <item>bottom_center</item>
         <item>bottom_right</item>
     </string-array>
+    <string-array name="hidden_ps_visibility_entries">
+        <item>Never</item>
+        <item>Always</item>
+        <item>While held</item>
+    </string-array>
+    <string-array name="hidden_ps_visibility_values">
+        <item>never</item>
+        <item>always</item>
+        <item>while_press</item>
+    </string-array>
 </resources>
