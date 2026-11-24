@@ -439,6 +439,10 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				if(newValue != preferences.bitrate)
 				{
 					preferences.bitrate = newValue
+					// The overlay button is the only place the current value is
+					// visible in the stream; it would otherwise keep showing the
+					// old one until the session was reopened.
+					updateBitrateButton()
 					// Rebuilding the session in place instead of recreating the
 					// activity: the ViewModel (and its ConnectInfo) survive a
 					// recreate, so that path reopened with the old bitrate and left
