@@ -456,7 +456,11 @@ JNIEXPORT jlongArray JNICALL JNI_FCN(sessionStats)(JNIEnv *env, jobject obj, jlo
 JNIEXPORT void JNICALL JNI_FCN(sessionSetArtificialLoss)(JNIEnv *env, jobject obj, jlong ptr, jint every_n)
 {
 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
-	chiaki_video_receiver_set_artificial_loss(&session->video_receiver, (unsigned int)(every_n > 0 ? every_n : 0));
+	// The receiver hangs off the stream connection and assembles frames before the
+	// decoder sees them.
+	if(session->session.stream_connection.video_receiver)
+		chiaki_video_receiver_set_artificial_loss(session->session.stream_connection.video_receiver,
+				(unsigned int)(every_n > 0 ? every_n : 0));
 }
 
 JNIEXPORT jint JNICALL JNI_FCN(sessionKeyboardText)(JNIEnv *env, jobject obj, jlong ptr, jstring text)
