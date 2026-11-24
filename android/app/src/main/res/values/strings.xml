@@ -101,6 +101,14 @@
     <string name="preferences_hidden_ps_position_title">Hidden PS position</string>
     <string name="preferences_hidden_ps_position_summary">Corners take a quarter circle, the edge centres a half circle.</string>
     <string name="preferences_hidden_ps_position_key">hidden_ps_position</string>
+    <string name="preferences_hidden_ps_visible_title">Show the PS area</string>
+    <string name="preferences_hidden_ps_visible_summary">Draw the invisible area in the touchpad white, to see where it is. Off means no pixels at all.</string>
+    <string name="preferences_hidden_ps_visible_key">hidden_ps_visible</string>
+    <string name="stream_ps_button_label">PS</string>
+    <string name="stream_ps_dialog_title">Hidden PS button</string>
+    <string name="stream_ps_enabled">Enabled</string>
+    <string name="stream_ps_show_area">Show the area</string>
+    <string name="stream_ps_position">Position</string>
     <string name="preferences_hidden_ps_size_title">Hidden PS size</string>
     <string name="preferences_hidden_ps_size_summary">Radius of the invisible area, in dp. Bigger is easier to hit and easier to hit by accident.</string>
     <string name="preferences_hidden_ps_size_key">hidden_ps_size</string>

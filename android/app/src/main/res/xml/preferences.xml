@@ -40,6 +40,12 @@
             app:summary="@string/preferences_hidden_ps_enabled_summary"
             app:defaultValue="false" />
 
+        <SwitchPreference
+            app:key="@string/preferences_hidden_ps_visible_key"
+            app:title="@string/preferences_hidden_ps_visible_title"
+            app:summary="@string/preferences_hidden_ps_visible_summary"
+            app:defaultValue="false" />
+
         <ListPreference
             app:key="@string/preferences_hidden_ps_position_key"
             app:title="@string/preferences_hidden_ps_position_title"

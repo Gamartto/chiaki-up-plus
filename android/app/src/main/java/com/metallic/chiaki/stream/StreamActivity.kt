@@ -143,6 +143,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 		adjustStreamViewAspect()
 
 		setupHiddenPsHotspot()
+		binding.psButtonButton.setOnClickListener { showHiddenPsDialog() }
 		updateBitrateButton()
 		binding.bitrateButton.setOnClickListener { showBitrateDialog() }
 
@@ -259,8 +260,78 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			"bottom_right" -> HiddenPsHotspotView.Position.BOTTOM_RIGHT
 			else -> HiddenPsHotspotView.Position.TOP_CENTER
 		}
+		hotspot.showArea = preferences.hiddenPsVisible
 		hotspot.onTrigger = { viewModel.session.input.sendPsTap() }
 		hotspot.visibility = View.VISIBLE
+	}
+
+	private val hiddenPsPositions = arrayOf(
+		"top_left", "top_center", "top_right",
+		"bottom_left", "bottom_center", "bottom_right"
+	)
+
+	private val hiddenPsPositionLabels = arrayOf(
+		"Top left", "Top centre", "Top right",
+		"Bottom left", "Bottom centre", "Bottom right"
+	)
+
+	// Reachable from the overlay so the button can be moved or shown without
+	// leaving the session.
+	private fun showHiddenPsDialog()
+	{
+		val preferences = Preferences(this)
+		val density = resources.displayMetrics.density
+		val padding = (20 * density).toInt()
+
+		val enabledSwitch = com.google.android.material.switchmaterial.SwitchMaterial(this).apply {
+			text = getString(R.string.stream_ps_enabled)
+			isChecked = preferences.hiddenPsEnabled
+		}
+		val showSwitch = com.google.android.material.switchmaterial.SwitchMaterial(this).apply {
+			text = getString(R.string.stream_ps_show_area)
+			isChecked = preferences.hiddenPsVisible
+			isEnabled = enabledSwitch.isChecked
+		}
+		enabledSwitch.setOnCheckedChangeListener { _, checked -> showSwitch.isEnabled = checked }
+
+		val positionLabel = TextView(this).apply {
+			text = getString(R.string.stream_ps_position)
+			setPadding(0, padding / 2, 0, 0)
+		}
+		val spinner = android.widget.Spinner(this).apply {
+			adapter = android.widget.ArrayAdapter(this@StreamActivity,
+				android.R.layout.simple_spinner_dropdown_item, hiddenPsPositionLabels)
+			setSelection(hiddenPsPositions.indexOf(preferences.hiddenPsPosition).coerceAtLeast(0))
+			isEnabled = enabledSwitch.isChecked
+		}
+		enabledSwitch.setOnCheckedChangeListener { _, checked ->
+			showSwitch.isEnabled = checked
+			spinner.isEnabled = checked
+		}
+
+		val container = LinearLayout(this).apply {
+			orientation = LinearLayout.VERTICAL
+			setPadding(padding, 0, padding, 0)
+			addView(enabledSwitch)
+			addView(showSwitch)
+			addView(positionLabel)
+			addView(spinner)
+		}
+
+		MaterialAlertDialogBuilder(this)
+			.setTitle(R.string.stream_ps_dialog_title)
+			.setView(container)
+			.setPositiveButton(android.R.string.ok) { _, _ ->
+				preferences.hiddenPsEnabled = enabledSwitch.isChecked
+				preferences.hiddenPsVisible = showSwitch.isChecked
+				preferences.hiddenPsPosition =
+					hiddenPsPositions.getOrElse(spinner.selectedItemPosition) { "top_center" }
+				setupHiddenPsHotspot()
+				if(!enabledSwitch.isChecked)
+					binding.hiddenPsHotspot.visibility = View.GONE
+			}
+			.setNegativeButton(android.R.string.cancel, null)
+			.show()
 	}
 
 	private fun currentBitrateMbps() = (Preferences(this).bitrate ?: 0) / 1000

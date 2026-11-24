@@ -25,83 +25,56 @@ import androidx.core.view.WindowInsetsCompat
 
 class DataStore(val preferences: Preferences): PreferenceDataStore()
 {
-	override fun getBoolean(key: String?, defValue: Boolean) = when(key)
-	{
-		preferences.logVerboseKey -> preferences.logVerbose
-		preferences.swapCrossMoonKey -> preferences.swapCrossMoon
-		preferences.rumbleEnabledKey -> preferences.rumbleEnabled
-		preferences.motionEnabledKey -> preferences.motionEnabled
-		preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled
-		preferences.psComboEnabledKey -> preferences.psComboEnabled
-		preferences.statsAtBottomKey -> preferences.statsAtBottom
-		preferences.touchpadZoneTintKey -> preferences.touchpadZoneTint
-		preferences.autoConnectEnabledKey -> preferences.autoConnectEnabled
-		else -> defValue
-	}
+	private class Binding<T>(val read: () -> T, val write: (T) -> Unit)
 
-	override fun putBoolean(key: String?, value: Boolean)
-	{
-		when(key)
-		{
-			preferences.logVerboseKey -> preferences.logVerbose = value
-			preferences.swapCrossMoonKey -> preferences.swapCrossMoon = value
-			preferences.rumbleEnabledKey -> preferences.rumbleEnabled = value
-			preferences.motionEnabledKey -> preferences.motionEnabled = value
-			preferences.buttonHapticEnabledKey -> preferences.buttonHapticEnabled = value
-			preferences.psComboEnabledKey -> preferences.psComboEnabled = value
-			preferences.statsAtBottomKey -> preferences.statsAtBottom = value
-			preferences.touchpadZoneTintKey -> preferences.touchpadZoneTint = value
-			preferences.autoConnectEnabledKey -> preferences.autoConnectEnabled = value
-		}
-	}
+	// One table per stored type. A preference that is declared in preferences.xml
+	// but missing here is silently dropped by the framework, which has cost two
+	// bugs already; DataStoreBindingsTest fails the build if they disagree.
+	private val booleans = mapOf(
+		preferences.logVerboseKey to Binding({ preferences.logVerbose }, { v: Boolean -> preferences.logVerbose = v }),
+		preferences.swapCrossMoonKey to Binding({ preferences.swapCrossMoon }, { v: Boolean -> preferences.swapCrossMoon = v }),
+		preferences.rumbleEnabledKey to Binding({ preferences.rumbleEnabled }, { v: Boolean -> preferences.rumbleEnabled = v }),
+		preferences.motionEnabledKey to Binding({ preferences.motionEnabled }, { v: Boolean -> preferences.motionEnabled = v }),
+		preferences.buttonHapticEnabledKey to Binding({ preferences.buttonHapticEnabled }, { v: Boolean -> preferences.buttonHapticEnabled = v }),
+		preferences.psComboEnabledKey to Binding({ preferences.psComboEnabled }, { v: Boolean -> preferences.psComboEnabled = v }),
+		preferences.statsAtBottomKey to Binding({ preferences.statsAtBottom }, { v: Boolean -> preferences.statsAtBottom = v }),
+		preferences.touchpadZoneTintKey to Binding({ preferences.touchpadZoneTint }, { v: Boolean -> preferences.touchpadZoneTint = v }),
+		preferences.autoConnectEnabledKey to Binding({ preferences.autoConnectEnabled }, { v: Boolean -> preferences.autoConnectEnabled = v }),
+		preferences.hiddenPsEnabledKey to Binding({ preferences.hiddenPsEnabled }, { v: Boolean -> preferences.hiddenPsEnabled = v }),
+		preferences.hiddenPsVisibleKey to Binding({ preferences.hiddenPsVisible }, { v: Boolean -> preferences.hiddenPsVisible = v })
+	)
 
-	override fun getString(key: String, defValue: String?) = when(key)
-	{
-		preferences.resolutionKey -> preferences.resolution.value
-		preferences.fpsKey -> preferences.fps.value
-		preferences.codecKey -> preferences.codec.value
-		preferences.touchpadOverlayKey -> preferences.touchpadOverlay
-		else -> defValue
-	}
+	private val strings = mapOf(
+		preferences.resolutionKey to Binding({ preferences.resolution.value }, { v: String ->
+			Preferences.Resolution.values().firstOrNull { it.value == v }?.let { preferences.resolution = it }
+		}),
+		preferences.fpsKey to Binding({ preferences.fps.value }, { v: String ->
+			Preferences.FPS.values().firstOrNull { it.value == v }?.let { preferences.fps = it }
+		}),
+		preferences.codecKey to Binding({ preferences.codec.value }, { v: String ->
+			Preferences.Codec.values().firstOrNull { it.value == v }?.let { preferences.codec = it }
+		}),
+		preferences.touchpadOverlayKey to Binding({ preferences.touchpadOverlay }, { v: String -> preferences.touchpadOverlay = v }),
+		preferences.hiddenPsPositionKey to Binding({ preferences.hiddenPsPosition }, { v: String -> preferences.hiddenPsPosition = v })
+	)
 
-	override fun getInt(key: String, defValue: Int) = when(key)
-	{
-		preferences.rumbleStrengthKey -> preferences.rumbleStrength
-		preferences.bitrateKey -> preferences.bitrate ?: 0
-		else -> defValue
-	}
+	private val ints = mapOf(
+		preferences.rumbleStrengthKey to Binding({ preferences.rumbleStrength }, { v: Int -> preferences.rumbleStrength = v }),
+		preferences.bitrateKey to Binding({ preferences.bitrate ?: 0 }, { v: Int -> preferences.bitrate = if(v <= 0) null else v }),
+		preferences.hiddenPsSizeKey to Binding({ preferences.hiddenPsSize }, { v: Int -> preferences.hiddenPsSize = v })
+	)
 
-	override fun putInt(key: String, value: Int)
-	{
-		when(key)
-		{
-			preferences.rumbleStrengthKey -> preferences.rumbleStrength = value
-			preferences.bitrateKey -> preferences.bitrate = if(value <= 0) null else value
-		}
-	}
+	override fun getBoolean(key: String?, defValue: Boolean) = key?.let { booleans[it]?.read?.invoke() } ?: defValue
+	override fun putBoolean(key: String?, value: Boolean) { key?.let { booleans[it]?.write?.invoke(value) } }
 
-	override fun putString(key: String, value: String?)
-	{
-		when(key)
-		{
-			preferences.resolutionKey ->
-			{
-				val resolution = Preferences.Resolution.values().firstOrNull { it.value == value } ?: return
-				preferences.resolution = resolution
-			}
-			preferences.fpsKey ->
-			{
-				val fps = Preferences.FPS.values().firstOrNull { it.value == value } ?: return
-				preferences.fps = fps
-			}
-			preferences.touchpadOverlayKey -> { if(value != null) preferences.touchpadOverlay = value }
-			preferences.codecKey ->
-			{
-				val codec = Preferences.Codec.values().firstOrNull { it.value == value } ?: return
-				preferences.codec = codec
-			}
-		}
-	}
+	override fun getString(key: String?, defValue: String?): String? = key?.let { strings[it]?.read?.invoke() } ?: defValue
+	override fun putString(key: String?, value: String?) { if(value != null) key?.let { strings[it]?.write?.invoke(value) } }
+
+	override fun getInt(key: String?, defValue: Int) = key?.let { ints[it]?.read?.invoke() } ?: defValue
+	override fun putInt(key: String?, value: Int) { key?.let { ints[it]?.write?.invoke(value) } }
+
+	/** Used by DataStoreBindingsTest to check the XML and these tables agree. */
+	fun hasBinding(key: String) = booleans.containsKey(key) || strings.containsKey(key) || ints.containsKey(key)
 }
 
 class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
