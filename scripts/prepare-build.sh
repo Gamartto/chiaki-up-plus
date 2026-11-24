@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Prepara el árbol para compilar el APK con NDK 29 / protobuf >= 4.
-# Idempotente: se puede correr varias veces.
+# Prepares the tree to build the APK with NDK 29 / protobuf >= 4.
+# Idempotent: safe to run more than once.
 #
 #   ./scripts/prepare-build.sh
 #   cd android && ./gradlew assembleSideapkDebug -Parm64only
 #
-# Qué arregla y por qué:
-#   1. oboe (submódulo de Google): compila con -Ofast y -Werror en debug.
-#      Clang 21, el del NDK 29, marca -Ofast como deprecado y con -Werror mata
-#      el build. Se cambia por -O3 y se quita el -Werror de debug. No se puede
-#      arreglar desde los arguments de CMake: -Wno-error puesto en
-#      CMAKE_CXX_FLAGS queda antes del -Werror del target y pierde.
-#   2. nanopb 0.4.6: su generador llama reflection.MakeClass, eliminado en
-#      protobuf 4. Se agrega un shim a message_factory.GetMessageClass.
+# What it fixes, and why:
+#   1. oboe (Google submodule): builds with -Ofast and -Werror in debug. Clang 21,
+#      the one shipped with NDK 29, marks -Ofast as deprecated and -Werror turns
+#      that into a failed build. It becomes -O3 and the debug -Werror is dropped.
+#      This cannot be fixed from the CMake arguments: -Wno-error placed in
+#      CMAKE_CXX_FLAGS is applied before the target's own -Werror and loses.
+#   2. nanopb 0.4.6: its generator calls reflection.MakeClass, removed in
+#      protobuf 4. A shim to message_factory.GetMessageClass is added.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,22 +21,22 @@ gen="$root/third-party/nanopb/generator/nanopb_generator.py"
 
 if [ -f "$oboe" ]; then
 	if grep -q -- "-Ofast" "$oboe"; then
-		echo "oboe: -Ofast -> -O3, quitando -Werror de debug"
-		# La linea del -Werror cierra el target_compile_options(, asi que se
-		# reemplaza por el parentesis en vez de borrarse.
+		echo "oboe: -Ofast -> -O3, dropping the debug -Werror"
+		# The -Werror line also closes target_compile_options(, so it is replaced
+		# with the closing parenthesis rather than deleted.
 		sed -i 's/^        -Ofast$/        -O3/; s/^        "\$<\$<CONFIG:DEBUG>:-Werror>")\s*$/        )/' "$oboe"
 	else
-		echo "oboe: ya parcheado"
+		echo "oboe: already patched"
 	fi
 else
-	echo "oboe: no encontrado, ¿faltan los submódulos? git submodule update --init --recursive" >&2
+	echo "oboe: not found, are the submodules missing? git submodule update --init --recursive" >&2
 fi
 
 if [ -f "$gen" ]; then
 	if grep -q "message_factory.GetMessageClass" "$gen"; then
-		echo "nanopb: ya parcheado"
+		echo "nanopb: already patched"
 	else
-		echo "nanopb: agregando shim de MakeClass"
+		echo "nanopb: adding the MakeClass shim"
 		python3 - "$gen" <<'PY'
 import sys
 p = sys.argv[1]
@@ -48,19 +48,19 @@ shim = needle + (
     "        reflection.MakeClass = _message_factory.GetMessageClass\n"
 )
 if needle not in src:
-    sys.exit("nanopb: no se encontró el import de reflection, revisar a mano")
+    sys.exit("nanopb: the reflection import was not found, check it by hand")
 open(p, "w").write(src.replace(needle, shim, 1))
 PY
 	fi
 else
-	echo "nanopb: no encontrado, ¿faltan los submódulos? git submodule update --init --recursive" >&2
+	echo "nanopb: not found, are the submodules missing? git submodule update --init --recursive" >&2
 fi
 
 cat <<'MSG'
 
-Listo. Recordatorios:
-  - protoc debe estar en PATH (https://github.com/protocolbuffers/protobuf/releases, v21.12 sirve).
-  - Si compilas desde un venv de Python sin setuptools, añade a los arguments de
-    CMake: -DPYTHON_EXECUTABLE=/usr/bin/python3
-  - El keystore va en android/local.properties (ver FORK.md §Firma).
+Done. Reminders:
+  - protoc must be on PATH (https://github.com/protocolbuffers/protobuf/releases, v21.12 works).
+  - If you build from a Python venv without setuptools, add to the CMake arguments:
+    -DPYTHON_EXECUTABLE=/usr/bin/python3
+  - The keystore goes in android/local.properties (see README, "Signing").
 MSG

@@ -4,6 +4,10 @@ package com.gameblabla.chiaki.touchcontrols
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -14,6 +18,7 @@ import io.reactivex.Observable
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.Subject
 import kotlin.math.max
+import kotlin.math.min
 
 class TouchpadView @JvmOverloads constructor(
 	context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -26,9 +31,15 @@ class TouchpadView @JvmOverloads constructor(
 		private const val BUTTON_PRESS_MAX_MOVE_DIST_DP = 32.0f
 		private const val SHORT_BUTTON_PRESS_DURATION_MS = 200L
 		private const val BUTTON_HOLD_DELAY_MS = 500L
-		private val ZONE_COLORS = intArrayOf(0x4C8DFF, 0x54C97A, 0xFFB020)
-		private const val ZONE_ALPHA_IDLE = 0x66
-		private const val ZONE_ALPHA_PRESSED = 0xB3
+		// Neon, but quiet: violet-blue on the left, white in the centre, cyan on the
+		// right, laid down as a soft glow instead of a flat fill.
+		private val ZONE_COLORS = intArrayOf(0x7C5CFF, 0xFFFFFF, 0x22D3EE)
+		private const val ZONE_ALPHA_IDLE = 0x26
+		private const val ZONE_ALPHA_PRESSED = 0x4D
+		private const val GLOW_ALPHA = 0x8C
+		private const val GLOW_RADIUS_RATIO = 0.85f
+		// The pad vector is a rounded rectangle with a 32/508 corner radius.
+		private const val PAD_CORNER_RATIO = 32f / 508f
 	}
 
 	// The console only ever receives absolute coordinates, so what is drawn here
@@ -39,6 +50,10 @@ class TouchpadView @JvmOverloads constructor(
 	var zoneTint = false
 
 	private var lastTouchX = 0f
+	private var lastTouchY = 0f
+
+	private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+	private val padPath = Path()
 
 	private val haptics = ButtonHaptics(context)
 
@@ -118,19 +133,45 @@ class TouchpadView @JvmOverloads constructor(
 		val pressed = state.buttons and ControllerState.BUTTON_TOUCHPAD != 0U
 		val drawable = (if(pressed) drawablePressed else drawableIdle) ?: return
 
-		if(zoneTint && touched)
+		val zoneColor = if(zoneTint && touched) ZONE_COLORS[zoneOf(lastTouchX)] else 0
+		if(zoneColor != 0)
 		{
 			// Tinting the vector itself keeps the exact shape and corner radius of
-			// the pad, instead of drawing a second rectangle next to it.
-			val rgb = ZONE_COLORS[zoneOf(lastTouchX)]
+			// the pad; the glow on top is what makes it read as neon rather than as
+			// a coloured button.
 			val alpha = if(pressed) ZONE_ALPHA_PRESSED else ZONE_ALPHA_IDLE
-			drawable.setTint((alpha shl 24) or rgb)
+			drawable.setTint((alpha shl 24) or zoneColor)
 		}
 		else
 			drawable.setTintList(null)
 
 		drawable.setBounds(paddingLeft, paddingTop, width - paddingRight, height - paddingBottom)
 		drawable.draw(canvas)
+
+		if(zoneColor != 0)
+			drawGlow(canvas, zoneColor)
+	}
+
+	private fun drawGlow(canvas: Canvas, rgb: Int)
+	{
+		val radius = min(width.toFloat(), height.toFloat()) * GLOW_RADIUS_RATIO
+		if(radius <= 0f)
+			return
+		val cx = lastTouchX.coerceIn(0f, width.toFloat())
+		val cy = lastTouchY.coerceIn(0f, height.toFloat())
+		glowPaint.shader = RadialGradient(cx, cy, radius,
+			(GLOW_ALPHA shl 24) or (rgb and 0xFFFFFF),
+			0x00000000,
+			Shader.TileMode.CLAMP)
+
+		val corner = width * PAD_CORNER_RATIO
+		padPath.reset()
+		padPath.addRoundRect(0f, 0f, width.toFloat(), height.toFloat(), corner, corner, Path.Direction.CW)
+		canvas.save()
+		canvas.clipPath(padPath)
+		canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), glowPaint)
+		canvas.restore()
+		glowPaint.shader = null
 	}
 
 	private fun zoneOf(x: Float) = when
@@ -156,6 +197,7 @@ class TouchpadView @JvmOverloads constructor(
 				state.startTouch(touchX(event, event.actionIndex), touchY(event, event.actionIndex))?.let {
 					haptics.trigger()
 					lastTouchX = event.getX(event.actionIndex)
+					lastTouchY = event.getY(event.actionIndex)
 					val touch = Touch(it, event.getX(event.actionIndex), event.getY(event.actionIndex))
 					pointerTouches[event.getPointerId(event.actionIndex)] = touch
 					if(!buttonHeld)
@@ -188,6 +230,7 @@ class TouchpadView @JvmOverloads constructor(
 					else
 					{
 						lastTouchX = event.getX(index)
+						lastTouchY = event.getY(index)
 						it.value.onMove(event.getX(event.actionIndex), event.getY(event.actionIndex))
 						acc || state.setTouchPos(it.value.stateId, touchX(event, index), touchY(event, index))
 					}

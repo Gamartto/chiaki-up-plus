@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: "Qué compilar"
+        description: "What to build"
         type: choice
         default: sideapk
         options: [sideapk, standard, ambos]
@@ -31,7 +31,7 @@ jobs:
         with:
           submodules: false
 
-      - name: Submódulos que el build de Android necesita
+      - name: Submodules the Android build needs
         run: |
           git submodule update --init --recursive \
             third-party/nanopb third-party/jerasure third-party/gf-complete \
@@ -44,12 +44,12 @@ jobs:
 
       - name: SDK, NDK y CMake
         run: |
-          # El runner ya trae cmdline-tools; setup-android@v3 intenta instalar el
-          # paquete legacy "tools" y ahora falla, así que no se usa.
+          # The runner already ships cmdline-tools; setup-android@v3 tries to
+          # install the legacy "tools" package and now fails, so it is not used.
           SDK="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
           SDKMANAGER="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)"
           if [ -z "$SDKMANAGER" ]; then
-            echo "Sin cmdline-tools en el runner, descargando"
+            echo "No cmdline-tools on the runner, downloading"
             curl -sSL -o /tmp/cmdline.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
             python3 -c "import zipfile; zipfile.ZipFile('/tmp/cmdline.zip').extractall('$RUNNER_TEMP/sdk')"
             chmod -R +x "$RUNNER_TEMP/sdk/cmdline-tools/bin"
@@ -72,8 +72,8 @@ jobs:
           chmod +x "$RUNNER_TEMP/protoc/bin/protoc"
           echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
 
-      # El external project de OpenSSL dentro de .cxx es lo que hace lento un
-      # build limpio; con esto el primer paso baja a ~1 min y el resto es Kotlin.
+      # The OpenSSL external project inside .cxx is what makes a clean build
+      # slow; with this the first run drops to ~1 min and the rest is Kotlin.
       - uses: actions/cache@v6
         with:
           path: |
@@ -83,7 +83,7 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties', 'CMakeLists.txt', 'lib/**/*.c', 'lib/**/*.h') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Firma y local.properties
+      - name: Signing and local.properties
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PW: ${{ secrets.ANDROID_KEYSTORE_PW }}
@@ -94,7 +94,7 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/chiaki.jks"
             KEYSTORE="$RUNNER_TEMP/chiaki.jks"
           else
-            echo "::warning::Sin keystore en los secretos: el APK sale con la firma debug de Gradle y no podrá actualizar una instalación existente."
+            echo "::warning::No keystore in the secrets: the APK is signed with Gradle's debug key and cannot update an existing install."
             KEYSTORE="$RUNNER_TEMP/keystore-ausente.jks"
           fi
           cat > android/local.properties <<EOF
@@ -105,10 +105,10 @@ jobs:
           chiakiKeyPW=$KEY_PW
           EOF
 
-      - name: Parches de build (oboe, nanopb)
+      - name: Build patches (oboe, nanopb)
         run: bash scripts/prepare-build.sh
 
-      - name: Compilar
+      - name: Build
         working-directory: android
         run: |
           set -e
@@ -118,17 +118,17 @@ jobs:
             *)        TASKS="assembleSideapkDebug assembleStandardDebug" ;;
           esac
           echo "Tareas: $TASKS"
-          # El tag manda la versión del fork (v1.0.0 -> 1.0.0). El versionCode
-          # crece con el número de corrida para que Android siempre acepte la
-          # actualización encima de la instalación anterior.
+          # The tag carries the fork version (v1.0.0 -> 1.0.0). versionCode grows
+          # with the run number so Android always accepts the update over the
+          # previously installed build.
           FORK_VERSION="${GITHUB_REF_NAME#v}"
           case "$GITHUB_REF" in refs/tags/v*) : ;; *) FORK_VERSION="1.0.0" ;; esac
           FORK_CODE=$((100 + GITHUB_RUN_NUMBER))
-          echo "Versión del fork: $FORK_VERSION (code $FORK_CODE)"
+          echo "Fork version: $FORK_VERSION (code $FORK_CODE)"
           ./gradlew $TASKS -Parm64only -PforkVersion="$FORK_VERSION" -PforkVersionCode="$FORK_CODE" \
             --no-daemon -Dorg.gradle.jvmargs="-Xmx3g"
 
-      - name: Reunir los APK
+      - name: Collect the APKs
         run: |
           set -e
           SHORT="${GITHUB_SHA::7}"
@@ -150,7 +150,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publicar en el release si es un tag
+      - name: Publish to the release when tagged
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
