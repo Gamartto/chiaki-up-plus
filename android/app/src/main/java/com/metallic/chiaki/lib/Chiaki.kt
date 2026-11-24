@@ -94,6 +94,7 @@ private class ChiakiNative
 		@JvmStatic external fun sessionSetControllerState(ptr: Long, controllerState: ControllerState)
 		@JvmStatic external fun sessionSetLoginPin(ptr: Long, pin: String)
 		@JvmStatic external fun sessionStats(ptr: Long): LongArray
+		@JvmStatic external fun sessionSetArtificialLoss(ptr: Long, everyN: Int)
 		@JvmStatic external fun sessionKeyboardText(ptr: Long, text: String): Int
 		@JvmStatic external fun sessionKeyboardAccept(ptr: Long): Int
 		@JvmStatic external fun sessionKeyboardReject(ptr: Long): Int
@@ -411,6 +412,9 @@ class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 	{
 		event(KeyboardRemoteCloseEvent)
 	}
+
+	/** Drops one in every [everyN] video packets; 0 disables it. Test aid only. */
+	fun setArtificialLoss(everyN: Int) = ChiakiNative.sessionSetArtificialLoss(nativePtr, everyN)
 
 	fun keyboardText(text: String) = ChiakiNative.sessionKeyboardText(nativePtr, text)
 	fun keyboardAccept() = ChiakiNative.sessionKeyboardAccept(nativePtr)

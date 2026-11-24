@@ -95,6 +95,10 @@
     <string name="preferences_swap_cross_moon_summary">Swap face buttons if default mapping is incorrect (e.g. for 8BitDo controllers)</string>
     <string name="preferences_ps_combo_title">Controller Shortcuts</string>
     <string name="preferences_ps_combo_summary">Start + Select presses the PS button. L1 + R1 + Start shows the stream statistics. Options, Share, L1 and R1 still work on their own.</string>
+    <string name="preferences_diagnostics_title">Diagnostics</string>
+    <string name="preferences_artificial_loss_title">Simulate packet loss</string>
+    <string name="preferences_artificial_loss_summary">Drops one out of every N video packets to reproduce network artefacts on purpose. 0 disables it; applies to the next session.</string>
+    <string name="preferences_artificial_loss_key">artificial_loss_every_n</string>
     <string name="preferences_hidden_ps_enabled_title">Hidden PS button</string>
     <string name="preferences_hidden_ps_enabled_summary">An invisible PS button along the edge of the screen. Hold it for 0.6 s; nothing is ever drawn, and the area is kept clear of the touchpad.</string>
     <string name="preferences_hidden_ps_enabled_key">hidden_ps_enabled</string>

@@ -113,6 +113,12 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getInt(rumbleStrengthKey, 100).coerceIn(0, 150)
 		set(value) { sharedPreferences.edit().putInt(rumbleStrengthKey, value.coerceIn(0, 150)).apply() }
 
+	// Diagnostics: 0 disables it, N drops one in every N video packets.
+	val artificialLossKey get() = resources.getString(R.string.preferences_artificial_loss_key)
+	var artificialLossEveryN
+		get() = sharedPreferences.getInt(artificialLossKey, 0).coerceIn(0, 200)
+		set(value) { sharedPreferences.edit().putInt(artificialLossKey, value.coerceIn(0, 200)).apply() }
+
 	val hiddenPsEnabledKey get() = resources.getString(R.string.preferences_hidden_ps_enabled_key)
 	var hiddenPsEnabled
 		get() = sharedPreferences.getBoolean(hiddenPsEnabledKey, false)

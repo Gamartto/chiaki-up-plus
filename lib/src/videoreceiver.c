@@ -19,6 +19,9 @@ CHIAKI_EXPORT void chiaki_video_receiver_init(ChiakiVideoReceiver *video_receive
 	video_receiver->frame_index_prev = -1;
 	video_receiver->frame_index_prev_complete = 0;
 
+	video_receiver->artificial_loss_every = 0;
+	video_receiver->artificial_loss_counter = 0;
+
 	chiaki_frame_processor_init(&video_receiver->frame_processor, video_receiver->log);
 	video_receiver->packet_stats = packet_stats;
 }
@@ -50,8 +53,25 @@ CHIAKI_EXPORT void chiaki_video_receiver_stream_info(ChiakiVideoReceiver *video_
 	}
 }
 
+CHIAKI_EXPORT void chiaki_video_receiver_set_artificial_loss(ChiakiVideoReceiver *video_receiver, unsigned int every_n)
+{
+	video_receiver->artificial_loss_every = every_n;
+	video_receiver->artificial_loss_counter = 0;
+}
+
 CHIAKI_EXPORT void chiaki_video_receiver_av_packet(ChiakiVideoReceiver *video_receiver, ChiakiTakionAVPacket *packet)
 {
+	if(video_receiver->artificial_loss_every > 0)
+	{
+		video_receiver->artificial_loss_counter++;
+		if(video_receiver->artificial_loss_counter % video_receiver->artificial_loss_every == 0)
+		{
+			CHIAKI_LOGD(video_receiver->log, "Artificial loss: dropping video packet %u",
+					video_receiver->artificial_loss_counter);
+			return;
+		}
+	}
+
 	// old frame?
 	ChiakiSeqNum16 frame_index = packet->frame_index;
 	if(video_receiver->frame_index_cur >= 0

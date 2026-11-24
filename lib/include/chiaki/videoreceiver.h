@@ -17,6 +17,8 @@ extern "C" {
 
 typedef struct chiaki_video_receiver_t
 {
+	unsigned int artificial_loss_every;
+	unsigned int artificial_loss_counter;
 	struct chiaki_session_t *session;
 	ChiakiLog *log;
 	ChiakiVideoProfile profiles[CHIAKI_VIDEO_PROFILES_MAX];
@@ -43,6 +45,14 @@ CHIAKI_EXPORT void chiaki_video_receiver_fini(ChiakiVideoReceiver *video_receive
 CHIAKI_EXPORT void chiaki_video_receiver_stream_info(ChiakiVideoReceiver *video_receiver, ChiakiVideoProfile *profiles, size_t profiles_count);
 
 CHIAKI_EXPORT void chiaki_video_receiver_av_packet(ChiakiVideoReceiver *video_receiver, ChiakiTakionAVPacket *packet);
+
+/**
+ * Drops one out of every @p every_n video packets before they reach the frame
+ * processor, and none when @p every_n is 0. Exists to reproduce the artefacts a
+ * bad network causes, so the recovery path can be verified on purpose instead of
+ * waiting for the Wi-Fi to misbehave.
+ */
+CHIAKI_EXPORT void chiaki_video_receiver_set_artificial_loss(ChiakiVideoReceiver *video_receiver, unsigned int every_n);
 
 static inline ChiakiVideoReceiver *chiaki_video_receiver_new(struct chiaki_session_t *session, ChiakiPacketStats *packet_stats)
 {

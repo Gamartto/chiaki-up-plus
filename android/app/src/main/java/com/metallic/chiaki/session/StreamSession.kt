@@ -18,7 +18,13 @@ data class StreamStateCreateError(val error: CreateError): StreamState()
 data class StreamStateQuit(val reason: QuitReason, val reasonString: String?): StreamState()
 data class StreamStateLoginPinRequest(val pinIncorrect: Boolean): StreamState()
 
-class StreamSession(connectInfo: ConnectInfo, val logManager: LogManager, val logVerbose: Boolean, val input: StreamInput)
+class StreamSession(
+	connectInfo: ConnectInfo,
+	val logManager: LogManager,
+	val logVerbose: Boolean,
+	val input: StreamInput,
+	private val artificialLossEveryN: Int = 0
+)
 {
 	// Mutable because the video profile is part of the launch specification: a new
 	// bitrate means rebuilding the session, not tweaking the running one.
@@ -115,6 +121,8 @@ class StreamSession(connectInfo: ConnectInfo, val logManager: LogManager, val lo
 				if(gen == generation)
 					eventCallback(event)
 			}
+			if(artificialLossEveryN > 0)
+				session.setArtificialLoss(artificialLossEveryN)
 			session.start()
 			val surface = surface
 			if(surface != null)

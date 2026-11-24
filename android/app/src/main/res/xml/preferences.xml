@@ -186,4 +186,16 @@
             app:title="@string/preferences_import_settings_title"
             app:icon="@drawable/ic_import"/>
     </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/preferences_diagnostics_title">
+        <androidx.preference.SeekBarPreference
+            app:key="@string/preferences_artificial_loss_key"
+            app:title="@string/preferences_artificial_loss_title"
+            app:summary="@string/preferences_artificial_loss_summary"
+            android:max="200"
+            app:min="0"
+            app:seekBarIncrement="5"
+            android:defaultValue="0"
+            app:showSeekBarValue="true" />
+    </PreferenceCategory>
 </PreferenceScreen>

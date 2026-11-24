@@ -453,6 +453,12 @@ JNIEXPORT jlongArray JNICALL JNI_FCN(sessionStats)(JNIEnv *env, jobject obj, jlo
 	return arr;
 }
 
+JNIEXPORT void JNICALL JNI_FCN(sessionSetArtificialLoss)(JNIEnv *env, jobject obj, jlong ptr, jint every_n)
+{
+	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;
+	chiaki_video_receiver_set_artificial_loss(&session->video_receiver, (unsigned int)(every_n > 0 ? every_n : 0));
+}
+
 JNIEXPORT jint JNICALL JNI_FCN(sessionKeyboardText)(JNIEnv *env, jobject obj, jlong ptr, jstring text)
 {
 	AndroidChiakiSession *session = (AndroidChiakiSession *)ptr;

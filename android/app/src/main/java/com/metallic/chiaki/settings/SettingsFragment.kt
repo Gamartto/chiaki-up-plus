@@ -61,7 +61,8 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 	private val ints = mapOf(
 		preferences.rumbleStrengthKey to Binding({ preferences.rumbleStrength }, { v: Int -> preferences.rumbleStrength = v }),
 		preferences.bitrateKey to Binding({ preferences.bitrate ?: 0 }, { v: Int -> preferences.bitrate = if(v <= 0) null else v }),
-		preferences.hiddenPsSizeKey to Binding({ preferences.hiddenPsSize }, { v: Int -> preferences.hiddenPsSize = v })
+		preferences.hiddenPsSizeKey to Binding({ preferences.hiddenPsSize }, { v: Int -> preferences.hiddenPsSize = v }),
+		preferences.artificialLossKey to Binding({ preferences.artificialLossEveryN }, { v: Int -> preferences.artificialLossEveryN = v })
 	)
 
 	override fun getBoolean(key: String?, defValue: Boolean) = key?.let { booleans[it]?.read?.invoke() } ?: defValue
