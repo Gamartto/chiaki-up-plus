@@ -40,8 +40,7 @@ class DataStore(val preferences: Preferences): PreferenceDataStore()
 		preferences.statsAtBottomKey to Binding({ preferences.statsAtBottom }, { v: Boolean -> preferences.statsAtBottom = v }),
 		preferences.touchpadZoneTintKey to Binding({ preferences.touchpadZoneTint }, { v: Boolean -> preferences.touchpadZoneTint = v }),
 		preferences.autoConnectEnabledKey to Binding({ preferences.autoConnectEnabled }, { v: Boolean -> preferences.autoConnectEnabled = v }),
-		preferences.hiddenPsEnabledKey to Binding({ preferences.hiddenPsEnabled }, { v: Boolean -> preferences.hiddenPsEnabled = v }),
-		preferences.hiddenPsVisibleKey to Binding({ preferences.hiddenPsVisible }, { v: Boolean -> preferences.hiddenPsVisible = v })
+		preferences.hiddenPsEnabledKey to Binding({ preferences.hiddenPsEnabled }, { v: Boolean -> preferences.hiddenPsEnabled = v })
 	)
 
 	private val strings = mapOf(

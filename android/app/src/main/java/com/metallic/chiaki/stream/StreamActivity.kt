@@ -29,6 +29,7 @@ import com.gameblabla.chiaki.lib.ConnectInfo
 import com.gameblabla.chiaki.lib.ConnectVideoProfile
 import com.gameblabla.chiaki.session.*
 import com.gameblabla.chiaki.touchcontrols.DefaultTouchControlsFragment
+import com.gameblabla.chiaki.touchcontrols.HiddenPsGeometry
 import com.gameblabla.chiaki.touchcontrols.HiddenPsHotspotView
 import com.gameblabla.chiaki.touchcontrols.TouchControlsFragment
 import com.gameblabla.chiaki.touchcontrols.TouchpadOnlyFragment
@@ -250,7 +251,17 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			return
 		}
 		val density = resources.displayMetrics.density
-		hotspot.radiusPx = preferences.hiddenPsSize * density
+		val metrics = resources.displayMetrics
+		// The pad is inset from the edges, so a big hotspot could grow into it and
+		// steal its touches. The radius is capped by that free gap.
+		val freeGap = HiddenPsGeometry.maxRadiusPx(
+			metrics.widthPixels.toFloat(),
+			metrics.heightPixels.toFloat(),
+			HiddenPsGeometry.PAD_SIDE_MARGIN_DP * density,
+			density
+		)
+		val requested = preferences.hiddenPsSize * density
+		hotspot.radiusPx = if(freeGap > 0f) minOf(requested, freeGap) else requested
 		hotspot.position = when(preferences.hiddenPsPosition)
 		{
 			"top_left" -> HiddenPsHotspotView.Position.TOP_LEFT
@@ -260,7 +271,6 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			"bottom_right" -> HiddenPsHotspotView.Position.BOTTOM_RIGHT
 			else -> HiddenPsHotspotView.Position.TOP_CENTER
 		}
-		hotspot.showArea = preferences.hiddenPsVisible
 		hotspot.onTrigger = { viewModel.session.input.sendPsTap() }
 		hotspot.visibility = View.VISIBLE
 	}
@@ -287,13 +297,6 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			text = getString(R.string.stream_ps_enabled)
 			isChecked = preferences.hiddenPsEnabled
 		}
-		val showSwitch = com.google.android.material.switchmaterial.SwitchMaterial(this).apply {
-			text = getString(R.string.stream_ps_show_area)
-			isChecked = preferences.hiddenPsVisible
-			isEnabled = enabledSwitch.isChecked
-		}
-		enabledSwitch.setOnCheckedChangeListener { _, checked -> showSwitch.isEnabled = checked }
-
 		val positionLabel = TextView(this).apply {
 			text = getString(R.string.stream_ps_position)
 			setPadding(0, padding / 2, 0, 0)
@@ -304,16 +307,12 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			setSelection(hiddenPsPositions.indexOf(preferences.hiddenPsPosition).coerceAtLeast(0))
 			isEnabled = enabledSwitch.isChecked
 		}
-		enabledSwitch.setOnCheckedChangeListener { _, checked ->
-			showSwitch.isEnabled = checked
-			spinner.isEnabled = checked
-		}
+		enabledSwitch.setOnCheckedChangeListener { _, checked -> spinner.isEnabled = checked }
 
 		val container = LinearLayout(this).apply {
 			orientation = LinearLayout.VERTICAL
 			setPadding(padding, 0, padding, 0)
 			addView(enabledSwitch)
-			addView(showSwitch)
 			addView(positionLabel)
 			addView(spinner)
 		}
@@ -323,7 +322,6 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			.setView(container)
 			.setPositiveButton(android.R.string.ok) { _, _ ->
 				preferences.hiddenPsEnabled = enabledSwitch.isChecked
-				preferences.hiddenPsVisible = showSwitch.isChecked
 				preferences.hiddenPsPosition =
 					hiddenPsPositions.getOrElse(spinner.selectedItemPosition) { "top_center" }
 				setupHiddenPsHotspot()

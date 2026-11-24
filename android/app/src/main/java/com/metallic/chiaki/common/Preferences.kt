@@ -123,11 +123,6 @@ class Preferences(context: Context)
 		get() = sharedPreferences.getString(hiddenPsPositionKey, "top_center") ?: "top_center"
 		set(value) { sharedPreferences.edit().putString(hiddenPsPositionKey, value).apply() }
 
-	val hiddenPsVisibleKey get() = resources.getString(R.string.preferences_hidden_ps_visible_key)
-	var hiddenPsVisible
-		get() = sharedPreferences.getBoolean(hiddenPsVisibleKey, false)
-		set(value) { sharedPreferences.edit().putBoolean(hiddenPsVisibleKey, value).apply() }
-
 	val hiddenPsSizeKey get() = resources.getString(R.string.preferences_hidden_ps_size_key)
 	var hiddenPsSize
 		get() = sharedPreferences.getInt(hiddenPsSizeKey, 72).coerceIn(48, 120)

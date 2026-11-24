@@ -3,9 +3,6 @@
 package com.gameblabla.chiaki.touchcontrols
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.RectF
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
@@ -57,29 +54,7 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 
 	var onTrigger: (() -> Unit)? = null
 
-	/**
-	 * Draws the area in the same white the touchpad uses, so the button can be
-	 * found while setting it up. Off by default: the point of this button is that
-	 * it takes no space from the game.
-	 */
-	var showArea = false
-		set(value)
-		{
-			field = value
-			invalidate()
-		}
 
-	private val areaFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-		style = Paint.Style.FILL
-		color = 0x26FFFFFF
-	}
-
-	private val areaEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-		style = Paint.Style.STROKE
-		color = 0x66FFFFFF
-	}
-
-	private val arcRect = RectF()
 
 	private var holding = false
 	private var fired = false
@@ -136,27 +111,6 @@ class HiddenPsHotspotView @JvmOverloads constructor(
 			Position.BOTTOM_RIGHT -> r to r
 		}
 		return (x - cx).pow(2) + (y - cy).pow(2) <= r * r
-	}
-
-	override fun onDraw(canvas: Canvas)
-	{
-		super.onDraw(canvas)
-		if(!showArea || radiusPx <= 0f)
-			return
-		val r = radiusPx
-		areaEdge.strokeWidth = (r * 0.04f).coerceAtLeast(2f)
-		val (rect, start, sweep) = when(position)
-		{
-			Position.TOP_LEFT -> Triple(RectF(-r, -r, r, r), 0f, 90f)
-			Position.TOP_CENTER -> Triple(RectF(0f, -r, 2 * r, r), 0f, 180f)
-			Position.TOP_RIGHT -> Triple(RectF(0f, -r, 2 * r, r), 90f, 90f)
-			Position.BOTTOM_LEFT -> Triple(RectF(-r, 0f, r, 2 * r), 270f, 90f)
-			Position.BOTTOM_CENTER -> Triple(RectF(0f, 0f, 2 * r, 2 * r), 180f, 180f)
-			Position.BOTTOM_RIGHT -> Triple(RectF(0f, 0f, 2 * r, 2 * r), 180f, 90f)
-		}
-		arcRect.set(rect)
-		canvas.drawArc(arcRect, start, sweep, true, areaFill)
-		canvas.drawArc(arcRect, start, sweep, true, areaEdge)
 	}
 
 	override fun onTouchEvent(event: MotionEvent): Boolean
