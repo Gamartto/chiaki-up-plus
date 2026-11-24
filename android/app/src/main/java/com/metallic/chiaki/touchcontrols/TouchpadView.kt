@@ -38,6 +38,15 @@ class TouchpadView @JvmOverloads constructor(
 		private const val ZONE_ALPHA_PRESSED = 0x4D
 		private const val GLOW_ALPHA = 0x8C
 		private const val GLOW_RADIUS_RATIO = 0.85f
+		// Ten stops following a smoothstep falloff: fewer stops over a large area
+		// leave visible rings even with dithering on, because the ramp between two
+		// stops is a straight line in 8-bit steps.
+		private const val GLOW_STOPS = 10
+		private val GLOW_STOP_POSITIONS = FloatArray(GLOW_STOPS) { i ->
+			val t = i.toFloat() / (GLOW_STOPS - 1)
+			val eased = t * t * (3f - 2f * t)
+			eased
+		}
 		// How much of the remaining distance the drawn colour covers per frame. A
 		// fast slide across the pad would otherwise still read as a jump even with
 		// a continuous ramp: this eases every hue change over a few frames.
@@ -61,6 +70,11 @@ class TouchpadView @JvmOverloads constructor(
 	private val shownColor = floatArrayOf(-1f, 0f, 0f)
 
 	private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+	// Reused across frames: allocating these in onDraw would churn the heap 60
+	// times a second while a finger moves.
+	private val glowColors = IntArray(GLOW_STOPS)
+	private var glowColorsForRgb = -1
 	private val padPath = Path()
 
 	private val haptics = ButtonHaptics(context)
@@ -218,19 +232,23 @@ class TouchpadView @JvmOverloads constructor(
 			return
 		val cx = lastTouchX.coerceIn(0f, width.toFloat())
 		val cy = lastTouchY.coerceIn(0f, height.toFloat())
-		// Multi-stop gradient and dithering: a two-stop radial over a large area
-		// bands visibly on an 8-bit surface, which reads as rings around the finger.
 		glowPaint.isDither = true
 		val r = rgb and 0xFFFFFF
-		glowPaint.shader = RadialGradient(cx, cy, radius,
-			intArrayOf(
-				(GLOW_ALPHA shl 24) or r,
-				(0x5A shl 24) or r,
-				(0x24 shl 24) or r,
-				0x00000000
-			),
-			floatArrayOf(0f, 0.45f, 0.78f, 1f),
-			Shader.TileMode.CLAMP)
+		if(glowColorsForRgb != r)
+		{
+			// Alpha falls off with the same smoothstep the stops use, so the ramp is
+			// continuous in both position and opacity.
+			for(i in 0 until GLOW_STOPS)
+			{
+				val t = i.toFloat() / (GLOW_STOPS - 1)
+				val eased = t * t * (3f - 2f * t)
+				val alpha = (GLOW_ALPHA * (1f - eased)).toInt().coerceIn(0, 255)
+				glowColors[i] = (alpha shl 24) or r
+			}
+			glowColors[GLOW_STOPS - 1] = 0x00000000
+			glowColorsForRgb = r
+		}
+		glowPaint.shader = RadialGradient(cx, cy, radius, glowColors, GLOW_STOP_POSITIONS, Shader.TileMode.CLAMP)
 
 		val corner = width * PAD_CORNER_RATIO
 		padPath.reset()
