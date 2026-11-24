@@ -32,12 +32,16 @@ class TouchpadView @JvmOverloads constructor(
 		private const val SHORT_BUTTON_PRESS_DURATION_MS = 200L
 		private const val BUTTON_HOLD_DELAY_MS = 500L
 		// Neon, but quiet: violet-blue on the left, white in the centre, cyan on the
-		// right, laid down as a soft glow instead of a flat fill.
-		private val ZONE_COLORS = intArrayOf(0x7C5CFF, 0xFFFFFF, 0x22D3EE)
+		// right, laid down as a soft glow instead of a flat fill. The hue is a
+		// continuous ramp across the width, not a colour per third.
 		private const val ZONE_ALPHA_IDLE = 0x26
 		private const val ZONE_ALPHA_PRESSED = 0x4D
 		private const val GLOW_ALPHA = 0x8C
 		private const val GLOW_RADIUS_RATIO = 0.85f
+		// How much of the remaining distance the drawn colour covers per frame. A
+		// fast slide across the pad would otherwise still read as a jump even with
+		// a continuous ramp: this eases every hue change over a few frames.
+		private const val COLOR_FOLLOW = 0.28f
 		// The pad vector is a rounded rectangle with a 32/508 corner radius.
 		private const val PAD_CORNER_RATIO = 32f / 508f
 	}
@@ -51,6 +55,10 @@ class TouchpadView @JvmOverloads constructor(
 
 	private var lastTouchX = 0f
 	private var lastTouchY = 0f
+
+	// Channels of the colour actually on screen. shownColor[0] holds -1 until a
+	// touch starts one, which is cheaper than a separate flag.
+	private val shownColor = floatArrayOf(-1f, 0f, 0f)
 
 	private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 	private val padPath = Path()
@@ -133,7 +141,11 @@ class TouchpadView @JvmOverloads constructor(
 		val pressed = state.buttons and ControllerState.BUTTON_TOUCHPAD != 0U
 		val drawable = (if(pressed) drawablePressed else drawableIdle) ?: return
 
-		val zoneColor = if(zoneTint && touched) ZONE_COLORS[zoneOf(lastTouchX)] else 0
+		// The colour follows the finger continuously: sampling a ramp instead of
+		// picking a colour per third removes the step at the boundaries, which is
+		// what made the white look like it started out of nowhere.
+		val tinted = zoneTint && touched && width > 0
+		val zoneColor = if(tinted) followColor(TouchpadPalette.colorAt(lastTouchX / width.toFloat())) else 0
 		if(zoneColor != 0)
 		{
 			// Tinting the vector itself keeps the exact shape and corner radius of
@@ -143,13 +155,60 @@ class TouchpadView @JvmOverloads constructor(
 			drawable.setTint((alpha shl 24) or zoneColor)
 		}
 		else
+		{
+			// Next touch starts from its own colour instead of fading in from the
+			// one left behind wherever the finger last was.
+			shownColor[0] = -1f
 			drawable.setTintList(null)
+		}
 
 		drawable.setBounds(paddingLeft, paddingTop, width - paddingRight, height - paddingBottom)
 		drawable.draw(canvas)
 
 		if(zoneColor != 0)
 			drawGlow(canvas, zoneColor)
+	}
+
+	/**
+	 * Eases the colour on screen towards [target] and returns what to paint now.
+	 * Without this a quick swipe still swaps the whole pad's hue between frames,
+	 * which is the same jump the ramp was meant to remove, just faster.
+	 */
+	private fun followColor(target: Int): Int
+	{
+		val r = ((target ushr 16) and 0xFF).toFloat()
+		val g = ((target ushr 8) and 0xFF).toFloat()
+		val b = (target and 0xFF).toFloat()
+		if(shownColor[0] < 0f)
+		{
+			shownColor[0] = r
+			shownColor[1] = g
+			shownColor[2] = b
+		}
+		else
+		{
+			val tr = floatArrayOf(r, g, b)
+			var moving = false
+			for(i in 0..2)
+			{
+				val delta = tr[i] - shownColor[i]
+				if(Math.abs(delta) <= 0.5f)
+					shownColor[i] = tr[i]
+				else
+				{
+					shownColor[i] += delta * COLOR_FOLLOW
+					moving = true
+				}
+			}
+			// Keep drawing until the colour has settled; onDraw is only called on
+			// touch events otherwise, and the last frames would never happen.
+			if(moving)
+				postInvalidateOnAnimation()
+		}
+		return (0xFF shl 24) or
+			(Math.round(shownColor[0]) shl 16) or
+			(Math.round(shownColor[1]) shl 8) or
+			Math.round(shownColor[2])
 	}
 
 	private fun drawGlow(canvas: Canvas, rgb: Int)
@@ -181,13 +240,6 @@ class TouchpadView @JvmOverloads constructor(
 		canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), glowPaint)
 		canvas.restore()
 		glowPaint.shader = null
-	}
-
-	private fun zoneOf(x: Float) = when
-	{
-		x < width / 3f -> 0
-		x < width * 2f / 3f -> 1
-		else -> 2
 	}
 
 	private fun touchX(event: MotionEvent, index: Int): UShort =
