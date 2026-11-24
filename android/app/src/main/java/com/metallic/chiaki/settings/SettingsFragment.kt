@@ -145,22 +145,6 @@ class SettingsFragment: PreferenceFragmentCompat(), TitleFragment
 			it.entries = Preferences.fpsAll.map { fps -> getString(fps.title) }.toTypedArray()
 		}
 
-		val bitratePreference = preferenceScreen.findPreference<EditTextPreference>(getString(R.string.preferences_bitrate_key))
-		val bitrateSummaryProvider = Preference.SummaryProvider<EditTextPreference> {
-			preferences.bitrate?.toString() ?: getString(R.string.preferences_bitrate_auto, preferences.bitrateAuto)
-		}
-		bitratePreference?.let {
-			it.summaryProvider = bitrateSummaryProvider
-			it.setOnBindEditTextListener { editText ->
-				editText.hint = getString(R.string.preferences_bitrate_auto, preferences.bitrateAuto)
-				editText.inputType = InputType.TYPE_CLASS_NUMBER
-				editText.setText(preferences.bitrate?.toString() ?: "")
-			}
-		}
-		viewModel.bitrateAuto.observe(this, Observer {
-			bitratePreference?.summaryProvider = bitrateSummaryProvider
-		})
-
 		preferenceScreen.findPreference<ListPreference>(getString(R.string.preferences_codec_key))?.let {
 			it.entryValues = Preferences.codecAll.map { codec -> codec.value }.toTypedArray()
 			it.entries = Preferences.codecAll.map { codec -> getString(codec.title) }.toTypedArray()

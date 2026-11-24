@@ -108,6 +108,10 @@ jobs:
       - name: Build patches (oboe, nanopb)
         run: bash scripts/prepare-build.sh
 
+      - name: Unit tests
+        working-directory: android
+        run: ./gradlew testSideapkDebugUnitTest --no-daemon -Dorg.gradle.jvmargs="-Xmx3g"
+
       - name: Build
         working-directory: android
         run: |

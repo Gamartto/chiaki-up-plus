@@ -68,6 +68,12 @@ android {
             resValue "string", "app_name", "Chiaki-Up+"
         }
     }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -152,4 +158,10 @@ dependencies {
     implementation "androidx.room:room-rxjava2:$room_version"
     implementation "com.squareup.moshi:moshi:1.14.0"
     kapt "com.squareup.moshi:moshi-kotlin-codegen:1.14.0"
+
+    // JVM unit tests: Robolectric runs the Android framework locally, so screens
+    // can be inflated and checked without a device.
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.14.1"
+    testImplementation "androidx.test:core:1.6.1"
 }
