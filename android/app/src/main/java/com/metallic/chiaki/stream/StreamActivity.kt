@@ -251,17 +251,28 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			return
 		}
 		val density = resources.displayMetrics.density
-		val metrics = resources.displayMetrics
+		// The view's own size is the truth when it is already laid out; the display
+		// metrics are the fallback for the first pass. They can differ in split
+		// screen or with insets.
+		val widthPx = if(binding.mainStreamLayout.width > 0) binding.mainStreamLayout.width.toFloat()
+			else resources.displayMetrics.widthPixels.toFloat()
+		val heightPx = if(binding.mainStreamLayout.height > 0) binding.mainStreamLayout.height.toFloat()
+			else resources.displayMetrics.heightPixels.toFloat()
 		// The pad is inset from the edges, so a big hotspot could grow into it and
 		// steal its touches. The radius is capped by that free gap.
 		val freeGap = HiddenPsGeometry.maxRadiusPx(
-			metrics.widthPixels.toFloat(),
-			metrics.heightPixels.toFloat(),
-			HiddenPsGeometry.PAD_SIDE_MARGIN_DP * density,
-			density
+			widthPx, heightPx, HiddenPsGeometry.PAD_SIDE_MARGIN_DP * density, density
 		)
 		val requested = preferences.hiddenPsSize * density
-		hotspot.radiusPx = if(freeGap > 0f) minOf(requested, freeGap) else requested
+		if(freeGap <= 0f)
+		{
+			// No room at all (the pad fills the screen, e.g. ultrawide). A button
+			// that had to overlap the pad would steal its touches, so the feature
+			// stays off rather than half-working.
+			hotspot.visibility = View.GONE
+			return
+		}
+		hotspot.radiusPx = minOf(requested, freeGap)
 		hotspot.position = when(preferences.hiddenPsPosition)
 		{
 			"top_left" -> HiddenPsHotspotView.Position.TOP_LEFT
