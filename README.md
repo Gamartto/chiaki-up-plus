@@ -23,6 +23,18 @@ Every change here is a small, self-contained patch over upstream so that rebasin
 on it stays trivial. Developed and verified on a Retroid Pocket 5 (Android 13,
 arm64) streaming from a PS5.
 
+## Screenshots
+
+![Host list with the autoconnect checkbox at the top](docs/images/main-list.jpg)
+
+*The host list. With one console registered, the app skips this screen and goes
+straight to the stream.*
+
+![Settings](docs/images/settings.jpg)
+
+*Settings: controller shortcuts, autoconnect, and the invisible PS button with its
+visibility and position.*
+
 ## What it adds
 
 **PS button from the controller.** Start + Select together send an 80 ms PS tap.
@@ -95,13 +107,6 @@ reproducible in seconds.
 name and the FileProvider authority was hardcoded, so a second package crashed on
 start or collided with the installed one. `scripts/prepare-build.sh` covers the
 toolchain side (oboe under clang 21, nanopb under protobuf 4).
-
-## Screenshots
-
-| | |
-|---|---|
-| ![Host list with the autoconnect checkbox](docs/images/main-list.jpg) | ![Settings](docs/images/settings.jpg) |
-| The host list, with *Autoconnect Enabled* at the top: one console means the app skips this screen entirely. | Settings: controller shortcuts, autoconnect, and the invisible PS button with its visibility and position. |
 
 ## Versioning
 
