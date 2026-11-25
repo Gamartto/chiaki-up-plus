@@ -71,6 +71,8 @@ the right, as a continuous ramp rather than three zones, so there is no boundary
 notice. It brightens while the click is held. The console only receives
 coordinates, so the tint is a visual aid, not a new protocol feature.
 
+![Touchpad tint ramp](docs/images/touchpad-tint.png)
+
 **Invisible PS button.** For handhelds whose controller has no PS key: a hit area
 along the screen edge that sends the same 80 ms tap as Start + Select. Quarter
 circles in the four corners, half circles at the middle of the top and bottom
@@ -81,6 +83,10 @@ area cannot swallow the touchpad's touches, and a 0.6 s hold is required, becaus
 a stray finger must not open the console menu mid-game. The usable radius is
 capped by the gap between the pad and the screen edge, so the button is
 automatically smaller on tall screens.
+
+![Where the invisible PS button responds](docs/images/hidden-ps-positions.png)
+
+*The six positions. The shapes are the hit areas, not something drawn on screen.*
 
 **Autoconnect.** With a single registered console the app skips the list: if the
 console is on it connects, and if it is in rest mode it sends the wake packet and
