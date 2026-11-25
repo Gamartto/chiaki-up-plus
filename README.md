@@ -96,18 +96,6 @@ name and the FileProvider authority was hardcoded, so a second package crashed o
 start or collided with the installed one. `scripts/prepare-build.sh` covers the
 toolchain side (oboe under clang 21, nanopb under protobuf 4).
 
-## Screenshots
-
-The invisible PS button, drawn here to show where it responds. In play none of it
-is painted:
-
-![Invisible PS button hit areas](docs/images/hidden-ps-positions.png)
-
-The touchpad tint is a continuous ramp rather than three zones, so there is no
-edge where one colour ends:
-
-![Touchpad tint ramp](docs/images/touchpad-tint.png)
-
 ## Versioning
 
 The fork has its own version line: `v1.0.0` is the first release, independent of
