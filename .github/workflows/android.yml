@@ -117,9 +117,9 @@ jobs:
         run: |
           set -e
           case "${{ github.event.inputs.target || 'ambos' }}" in
-            sideapk)  TASKS="assembleSideapkDebug" ;;
-            standard) TASKS="assembleStandardDebug" ;;
-            *)        TASKS="assembleSideapkDebug assembleStandardDebug" ;;
+            sideapk)  TASKS="assembleSideapkRelease" ;;
+            standard) TASKS="assembleStandardRelease" ;;
+            *)        TASKS="assembleSideapkRelease assembleStandardRelease" ;;
           esac
           echo "Tareas: $TASKS"
           # The tag carries the fork version (v1.0.0 -> 1.0.0). versionCode grows
@@ -138,7 +138,7 @@ jobs:
           SHORT="${GITHUB_SHA::7}"
           mkdir -p dist
           for flavour in sideapk standard; do
-            src="android/app/build/outputs/apk/$flavour/debug/app-$flavour-debug.apk"
+            src="android/app/build/outputs/apk/$flavour/release/app-$flavour-release.apk"
             [ -f "$src" ] || continue
             out="dist/chiaki-up-plus-${flavour}-${SHORT}.apk"
             cp "$src" "$out"
@@ -159,8 +159,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BASE="$(grep -oP 'set\(CHIAKI_VERSION_MAJOR \K[0-9]+' CMakeLists.txt).$(grep -oP 'set\(CHIAKI_VERSION_MINOR \K[0-9]+' CMakeLists.txt).$(grep -oP 'set\(CHIAKI_VERSION_PATCH \K[0-9]+' CMakeLists.txt)"
-          TITLE="Chiaki-Up+ ${GITHUB_REF_NAME#v} (base Chiaki-Up $BASE)"
+          TITLE="Chiaki-Up+ ${GITHUB_REF_NAME#v}"
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || \
             gh release create "$GITHUB_REF_NAME" --title "$TITLE" --generate-notes
           gh release upload "$GITHUB_REF_NAME" dist/*.apk --clobber
