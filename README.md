@@ -194,8 +194,9 @@ git fetch upstream && git rebase upstream/master
 
 - LAN only, exactly like upstream. Playing outside the home network needs the
   official app or port forwarding, and fails behind CGNAT.
-- Builds from this repository are `debuggable=true`: fine for personal use, not
-  for distribution as a store-quality release.
+- The APKs are release builds signed with a personal key, not Play Store
+  deliverables: Android will warn about an unknown source, and they cannot update
+  the Play Store version because the signature differs.
 - Still missing from upstream and from here: microphone, HDR.
 
 ## Credits and disclaimer
