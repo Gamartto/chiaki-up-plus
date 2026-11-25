@@ -96,6 +96,13 @@ name and the FileProvider authority was hardcoded, so a second package crashed o
 start or collided with the installed one. `scripts/prepare-build.sh` covers the
 toolchain side (oboe under clang 21, nanopb under protobuf 4).
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Host list with the autoconnect checkbox](docs/images/main-list.jpg) | ![Settings](docs/images/settings.jpg) |
+| The host list, with *Autoconnect Enabled* at the top: one console means the app skips this screen entirely. | Settings: controller shortcuts, autoconnect, and the invisible PS button with its visibility and position. |
+
 ## Versioning
 
 The fork has its own version line: `v1.0.0` is the first release, independent of
