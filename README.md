@@ -206,6 +206,11 @@ client, the protocol work and the Android port belongs to Florian Märkl, gamebl
 and the chiaki-ng contributors. It is not a GitHub fork of their repositories and
 does not aim to be; it is not endorsed by Sony Interactive Entertainment either.
 
+The code added by this fork is released under the same **AGPL-3.0** licence, and
+its author is whoever maintains this fork. It cannot be relicensed: a derivative of
+AGPL code has to stay AGPL, and the files say so with the same SPDX identifier as
+upstream.
+
 ## About
 
 Originally created by Florian Märkl, minor improvements by gameblabla, handheld
