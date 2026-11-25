@@ -53,10 +53,22 @@ callback only wrote a log line. The stream is reopened on the new device, fallin
 back to shared mode when exclusive is refused.
 
 **Touchpad indicator on your terms.** The pad overlay can be always visible, only
-while a finger is down, or never, and there is an optional zone tint that colours
-the whole pad by the third the finger is in (blue left, green centre, amber
-right), brighter while the click is held. The console only receives coordinates,
-so the tint is a visual aid, not a new protocol feature.
+while a finger is down, or never. There is also an optional tint that colours the
+pad by where the finger is: violet at the left edge, white in the centre, cyan at
+the right, as a continuous ramp rather than three zones, so there is no boundary to
+notice. It brightens while the click is held. The console only receives
+coordinates, so the tint is a visual aid, not a new protocol feature.
+
+**Invisible PS button.** For handhelds whose controller has no PS key: a hit area
+along the screen edge that sends the same 80 ms tap as Start + Select. Quarter
+circles in the four corners, half circles at the middle of the top and bottom
+edges, six positions and a size slider. Nothing is drawn unless you ask for it,
+and it can appear always or only while the hold is in progress. Two details make
+it safe: the hit test is the circle and not its bounding rectangle, so a corner
+area cannot swallow the touchpad's touches, and a 0.6 s hold is required, because
+a stray finger must not open the console menu mid-game. The usable radius is
+capped by the gap between the pad and the screen edge, so the button is
+automatically smaller on tall screens.
 
 **Autoconnect.** With a single registered console the app skips the list: if the
 console is on it connects, and if it is in rest mode it sends the wake packet and
@@ -64,9 +76,19 @@ polls every 2 s for up to a minute, connecting as soon as the console answers.
 With several consoles the one marked *Use for autoconnect* is used; otherwise the
 list is shown. Leaving a stream still returns to the list.
 
-**Rumble strength and bitrate ceiling.** Rumble has a 0-150% scale over the motor
-instead of on/off. The manual bitrate field accepts up to 100 Mbit; the console
-still enforces its own limit and 45 Mbit remains the sensible ceiling over Wi-Fi.
+**Rumble strength and bitrate.** Rumble has a 0-150% scale over the motor instead
+of on/off. The bitrate is a slider from 0 (Auto) to 100 Mbit, where Auto shows what
+the preset table resolves to instead of pretending to be a guess by the console.
+The stream overlay carries the current value and can change it mid-session: the
+bitrate travels in the launch specification, so the app closes the session and
+opens a new one with the new ceiling, keeping the player on the same screen. 45
+Mbit remains the sensible ceiling over Wi-Fi; the console enforces its own limit
+above that.
+
+**A way to reproduce network faults.** Settings → Diagnostics can drop one in
+every N video packets on purpose. It exists because frame recovery cannot be
+verified by waiting for the Wi-Fi to misbehave: with 2-3% loss the artefacts are
+reproducible in seconds.
 
 **Packaging fixes.** The app could not be rebuilt under a different
 `applicationId`: two CoordinatorLayout behaviors were referenced by bare class
@@ -142,6 +164,14 @@ to the CMake `arguments` in `android/app/build.gradle`:
 ```
 "-DPYTHON_EXECUTABLE=/usr/bin/python3"
 ```
+
+## Tests
+
+`./gradlew testSideapkDebugUnitTest` runs the JVM suite (Robolectric), which
+inflates the real settings screen, checks that every preference in the XML has a
+storage binding, and covers the touchpad palette, the invisible button geometry
+and its hold behaviour. CI runs it before building, so a regression fails the
+pipeline instead of reaching a device.
 
 ## Staying in sync with upstream
 
