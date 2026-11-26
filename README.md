@@ -114,6 +114,25 @@ name and the FileProvider authority was hardcoded, so a second package crashed o
 start or collided with the installed one. `scripts/prepare-build.sh` covers the
 toolchain side (oboe under clang 21, nanopb under protobuf 4).
 
+## Bugs fixed on the way
+
+Reviewing the code turned up defects that were not ours and are still in upstream,
+so they are worth naming:
+
+- **The decoder could deadlock on itself.** `set_surface()` took the codec mutex and
+  then called `kill_decoder()`, which takes the same non-recursive mutex; and the
+  branch with no codec returned without unlocking at all. That path runs whenever
+  the surface goes away.
+- **An off-by-one on a network-supplied index.** The frame processor's bound check
+  used `>` instead of `>=`, so one malformed packet could write past the slot array
+  and corrupt the heap.
+- **The audio path could hold its mutex forever.** A failed buffer dequeue returned
+  without unlocking, and a zero-sized buffer made the copy loop spin.
+- **Console credentials went to logcat.** Importing settings logged the whole
+  object, keys included.
+- **Dialogs were never dismissed.** The builder's local `dialog` shadowed the
+  property, so the app could stack an error on top of a stale PIN prompt.
+
 ## Versioning
 
 The fork has its own version line: `v1.0.0` is the first release, independent of
