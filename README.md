@@ -133,6 +133,13 @@ so they are worth naming:
 - **Dialogs were never dismissed.** The builder's local `dialog` shadowed the
   property, so the app could stack an error on top of a stale PIN prompt.
 
+## Known issues
+
+What the review found and has **not** been fixed yet is written down in
+[docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md), with the reason each one is still
+there. The short version: the session lifecycle still runs on the UI thread, and
+there is no recovery if the decoder itself fails.
+
 ## Versioning
 
 The fork has its own version line: `v1.0.0` is the first release, independent of
