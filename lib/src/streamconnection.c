@@ -165,6 +165,8 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_stream_connection_run(ChiakiStreamConnectio
 	if(!stream_connection->audio_receiver)
 	{
 		CHIAKI_LOGE(session->log, "StreamConnection failed to initialize Audio Receiver");
+		// state_mutex is held here; returning without it wedges every later stop.
+		chiaki_mutex_unlock(&stream_connection->state_mutex);
 		return CHIAKI_ERR_UNKNOWN;
 	}
 
