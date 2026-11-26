@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include <chiaki/videoreceiver.h>
+#include <chiaki/time.h>
 #include <chiaki/session.h>
 
 #include <string.h>
@@ -21,6 +22,8 @@ CHIAKI_EXPORT void chiaki_video_receiver_init(ChiakiVideoReceiver *video_receive
 
 	video_receiver->artificial_loss_every = 0;
 	video_receiver->artificial_loss_counter = 0;
+	video_receiver->waiting_for_idr = false;
+	video_receiver->idr_request_last_ms = 0;
 
 	chiaki_frame_processor_init(&video_receiver->frame_processor, video_receiver->log);
 	video_receiver->packet_stats = packet_stats;
@@ -133,6 +136,9 @@ CHIAKI_EXPORT void chiaki_video_receiver_av_packet(ChiakiVideoReceiver *video_re
 	}
 }
 
+// Minimum gap between keyframe requests while the picture is still broken.
+#define IDR_REQUEST_INTERVAL_MS 500
+
 #define FLUSH_CORRUPT_FRAMES
 
 static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *video_receiver)
@@ -154,6 +160,31 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
 	// TODO: Error Concealment on CHIAKI_FRAME_PROCESSOR_FLUSH_RESULT_FEC_FAILED
 
 	bool succ = flush_result != CHIAKI_FRAME_PROCESSOR_FLUSH_RESULT_FEC_FAILED;
+
+	if(!succ)
+	{
+		// Part of this frame never arrived, so everything after it is wrong until a
+		// keyframe. The console sends one on its own schedule, which can be seconds
+		// away; ask for it instead of waiting, but not once per packet.
+		uint64_t now = chiaki_time_now_monotonic_ms();
+		if(!video_receiver->waiting_for_idr || now - video_receiver->idr_request_last_ms >= IDR_REQUEST_INTERVAL_MS)
+		{
+			ChiakiErrorCode err = stream_connection_send_idr_request(&video_receiver->session->stream_connection);
+			if(err == CHIAKI_ERR_SUCCESS)
+			{
+				video_receiver->waiting_for_idr = true;
+				video_receiver->idr_request_last_ms = now;
+				CHIAKI_LOGW(video_receiver->log, "Frame %d arrived incomplete, requested a keyframe", (int)video_receiver->frame_index_cur);
+			}
+			else
+				CHIAKI_LOGW(video_receiver->log, "Frame %d arrived incomplete and the keyframe request failed: %s", (int)video_receiver->frame_index_cur, chiaki_error_string(err));
+		}
+	}
+	else if(video_receiver->waiting_for_idr)
+	{
+		video_receiver->waiting_for_idr = false;
+		CHIAKI_LOGI(video_receiver->log, "Picture recovered after the keyframe request");
+	}
 
 	if(video_receiver->session->video_sample_cb)
 	{
