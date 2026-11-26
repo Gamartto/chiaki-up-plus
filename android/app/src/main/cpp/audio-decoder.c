@@ -32,7 +32,9 @@ ChiakiErrorCode android_chiaki_audio_decoder_init(AndroidChiakiAudioDecoder *dec
 void android_chiaki_audio_decoder_shutdown_codec(AndroidChiakiAudioDecoder *decoder)
 {
 	chiaki_mutex_lock(&decoder->codec_mutex);
-	ssize_t codec_buf_index = AMediaCodec_dequeueInputBuffer(decoder->codec, -1);
+	// Bounded: an infinite wait here blocks teardown forever if the codec has no
+	// free input buffer, and it is called from the UI thread on disconnect.
+	ssize_t codec_buf_index = AMediaCodec_dequeueInputBuffer(decoder->codec, INPUT_BUFFER_TIMEOUT_MS * 1000);
 	if(codec_buf_index >= 0)
 	{
 		CHIAKI_LOGI(decoder->log, "Audio Decoder sending EOS buffer");
@@ -42,8 +44,10 @@ void android_chiaki_audio_decoder_shutdown_codec(AndroidChiakiAudioDecoder *deco
 		CHIAKI_LOGE(decoder->log, "Failed to get input buffer for shutting down Audio Decoder!");
 	chiaki_mutex_unlock(&decoder->codec_mutex);
 	chiaki_thread_join(&decoder->output_thread, NULL);
+	chiaki_mutex_lock(&decoder->codec_mutex);
 	AMediaCodec_delete(decoder->codec);
 	decoder->codec = NULL;
+	chiaki_mutex_unlock(&decoder->codec_mutex);
 }
 
 void android_chiaki_audio_decoder_fini(AndroidChiakiAudioDecoder *decoder)
@@ -84,6 +88,13 @@ static void *android_chiaki_audio_decoder_output_thread_func(void *user)
 				CHIAKI_LOGI(decoder->log, "AMediaCodec for Audio Decoder reported EOS");
 				break;
 			}
+		}
+		else if(codec_buf_index != AMEDIACODEC_INFO_TRY_AGAIN_LATER
+				&& codec_buf_index != AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED
+				&& codec_buf_index != AMEDIACODEC_INFO_OUTPUT_BUFFERS_CHANGED)
+		{
+			CHIAKI_LOGE(decoder->log, "Audio decoder output error: %d", (int)codec_buf_index);
+			break;
 		}
 	}
 
@@ -183,7 +194,7 @@ static void android_chiaki_audio_decoder_frame(uint8_t *buf, size_t buf_size, vo
 		if(codec_buf_index < 0)
 		{
 			CHIAKI_LOGE(decoder->log, "Failed to get input audio buffer");
-			return;
+			goto beach;
 		}
 
 		size_t codec_buf_size;
@@ -193,6 +204,11 @@ static void android_chiaki_audio_decoder_frame(uint8_t *buf, size_t buf_size, vo
 		{
 			CHIAKI_LOGD(decoder->log, "Sample is bigger than audio buffer, splitting");
 			codec_sample_size = codec_buf_size;
+		}
+		if(!codec_buf || codec_sample_size == 0)
+		{
+			CHIAKI_LOGE(decoder->log, "Audio decoder returned an unusable input buffer");
+			goto beach;
 		}
 		memcpy(codec_buf, buf, codec_sample_size);
 		AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, codec_sample_size, decoder->timestamp_cur++, 0); // timestamp just raised by 1 for maximum realtime
