@@ -9,6 +9,7 @@
 #include <android/native_window_jni.h>
 
 #include <string.h>
+#include <unistd.h>
 
 #define INPUT_BUFFER_TIMEOUT_MS 10
 
@@ -27,28 +28,38 @@ ChiakiErrorCode android_chiaki_video_decoder_init(AndroidChiakiVideoDecoder *dec
 	return chiaki_mutex_init(&decoder->codec_mutex, false);
 }
 
-static void kill_decoder(AndroidChiakiVideoDecoder *decoder)
+// Caller must hold codec_mutex and gets it back held. The lock is dropped only
+// around the join, because the output thread needs it to read shutdown_output,
+// and the codec is deleted while holding it so video_sample() cannot be inside
+// a codec that no longer exists.
+static void kill_decoder_locked(AndroidChiakiVideoDecoder *decoder)
 {
-	chiaki_mutex_lock(&decoder->codec_mutex);
 	decoder->shutdown_output = true;
 	ssize_t codec_buf_index = AMediaCodec_dequeueInputBuffer(decoder->codec, 1000);
 	if(codec_buf_index >= 0)
 	{
 		CHIAKI_LOGI(decoder->log, "Video Decoder sending EOS buffer");
 		AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, 0, decoder->timestamp_cur++, AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM);
-		AMediaCodec_stop(decoder->codec);
-		chiaki_mutex_unlock(&decoder->codec_mutex);
-		chiaki_thread_join(&decoder->output_thread, NULL);
 	}
 	else
-	{
 		CHIAKI_LOGE(decoder->log, "Failed to get input buffer for shutting down Video Decoder!");
-		AMediaCodec_stop(decoder->codec);
-		chiaki_mutex_unlock(&decoder->codec_mutex);
-	}
+
+	AMediaCodec_stop(decoder->codec);
+
+	chiaki_mutex_unlock(&decoder->codec_mutex);
+	chiaki_thread_join(&decoder->output_thread, NULL);
+	chiaki_mutex_lock(&decoder->codec_mutex);
+
 	AMediaCodec_delete(decoder->codec);
 	decoder->codec = NULL;
 	decoder->shutdown_output = false;
+}
+
+static void kill_decoder(AndroidChiakiVideoDecoder *decoder)
+{
+	chiaki_mutex_lock(&decoder->codec_mutex);
+	kill_decoder_locked(decoder);
+	chiaki_mutex_unlock(&decoder->codec_mutex);
 }
 
 void android_chiaki_video_decoder_fini(AndroidChiakiVideoDecoder *decoder)
@@ -64,11 +75,13 @@ void android_chiaki_video_decoder_set_surface(AndroidChiakiVideoDecoder *decoder
 
 	if(!surface)
 	{
+		// kill_decoder_locked() gives the mutex back held, so unlock on both paths.
 		if(decoder->codec)
 		{
-			kill_decoder(decoder);
+			kill_decoder_locked(decoder);
 			CHIAKI_LOGI(decoder->log, "Decoder shut down after surface was removed");
 		}
+		chiaki_mutex_unlock(&decoder->codec_mutex);
 		return;
 	}
 
@@ -171,6 +184,14 @@ bool android_chiaki_video_decoder_video_sample(uint8_t *buf, size_t buf_size, vo
 			//CHIAKI_LOGD(decoder->log, "Sample is bigger than buffer, splitting");
 			codec_sample_size = codec_buf_size;
 		}
+		if(!codec_buf || codec_sample_size == 0)
+		{
+			// Nothing to copy into: without this the loop below never advances and
+			// spins forever holding codec_mutex, which also wedges the audio thread.
+			CHIAKI_LOGE(decoder->log, "Video decoder returned an unusable input buffer");
+			r = false;
+			goto beach;
+		}
 		memcpy(codec_buf, buf, codec_sample_size);
 		media_status_t r = AMediaCodec_queueInputBuffer(decoder->codec, (size_t)codec_buf_index, 0, codec_sample_size, decoder->timestamp_cur++, 0); // timestamp just raised by 1 for maximum realtime
 		if(r != AMEDIA_OK)
@@ -214,6 +235,16 @@ static void *android_chiaki_video_decoder_output_thread_func(void *user)
 				CHIAKI_LOGI(decoder->log, "Video Decoder Output Thread detected shutdown after reported error");
 				break;
 			}
+			if(status != AMEDIACODEC_INFO_TRY_AGAIN_LATER
+					&& status != AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED
+					&& status != AMEDIACODEC_INFO_OUTPUT_BUFFERS_CHANGED)
+			{
+				CHIAKI_LOGE(decoder->log, "Video decoder output error: %d", (int)status);
+				break;
+			}
+			// A permanent codec error returns immediately, every time: without a
+			// sleep this loop burns a core at 100% until the session ends.
+			usleep(1000);
 		}
 	}
 
