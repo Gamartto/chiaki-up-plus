@@ -217,7 +217,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			hint = getString(R.string.stream_keyboard_hint)
 		}
 
-		val dialog = MaterialAlertDialogBuilder(this)
+		val dlg = MaterialAlertDialogBuilder(this)
 			.setTitle(R.string.stream_keyboard_title)
 			.setView(editText)
 			.setPositiveButton(android.R.string.ok) { _, _ -> viewModel.session.keyboardAccept() }
@@ -235,8 +235,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 			}
 		})
 
-		keyboardDialog = dialog
-		dialog.show()
+		keyboardDialog = dlg
+		dlg.show()
 	}
 
 	// The hotspot is laid out by the view itself from the radius and position, so
@@ -653,7 +653,10 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 	}
 
 	private var dialogContents: DialogContents? = null
-	private var dialog: AlertDialog? = null
+	// MaterialAlertDialogBuilder hands back the AppCompat type; the property was
+	// declared as android.app.AlertDialog, which is why assigning it never compiled
+	// and the dialogs were never tracked in the first place.
+	private var dialog: androidx.appcompat.app.AlertDialog? = null
 		set(value)
 		{
 			field = value
@@ -682,7 +685,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 					{
 						dialog?.dismiss()
 						val reasonStr = state.reasonString
-						val dialog = MaterialAlertDialogBuilder(this)
+						val dlg = MaterialAlertDialogBuilder(this)
 							.setMessage(getString(R.string.alert_message_session_quit, state.reason.toString())
 									+ (if(reasonStr != null) "\n$reasonStr" else ""))
 							.setPositiveButton(R.string.action_reconnect) { _, _ ->
@@ -699,7 +702,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 							}
 							.create()
 						dialogContents = StreamQuitDialog
-						dialog.show()
+						dialog = dlg
+						dlg.show()
 					}
 					else
 						finish()
@@ -711,7 +715,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 				if(dialogContents != CreateErrorDialog)
 				{
 					dialog?.dismiss()
-					val dialog = MaterialAlertDialogBuilder(this)
+					val dlg = MaterialAlertDialogBuilder(this)
 						.setMessage(getString(R.string.alert_message_session_create_error, state.error.errorCode.toString()))
 						.setOnDismissListener {
 							dialog = null
@@ -720,7 +724,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 						.setNegativeButton(R.string.action_quit_session) { _, _ -> }
 						.create()
 					dialogContents = CreateErrorDialog
-					dialog.show()
+					dialog = dlg
+					dlg.show()
 				}
 			}
 
@@ -733,7 +738,7 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 					val view = layoutInflater.inflate(R.layout.dialog_login_pin, null)
 					val pinEditText = view.findViewById<EditText>(R.id.pinEditText)
 
-					val dialog = MaterialAlertDialogBuilder(this)
+					val dlg = MaterialAlertDialogBuilder(this)
 						.setMessage(
 							if(state.pinIncorrect)
 								R.string.alert_message_login_pin_request_incorrect
@@ -754,7 +759,8 @@ class StreamActivity : AppCompatActivity(), View.OnSystemUiVisibilityChangeListe
 						}
 						.create()
 					dialogContents = PinRequestDialog
-					dialog.show()
+					dialog = dlg
+					dlg.show()
 				}
 			}
 
