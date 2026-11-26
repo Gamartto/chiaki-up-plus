@@ -7,7 +7,6 @@ import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.util.Base64
-import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.room.*
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -194,7 +193,8 @@ fun importSettingsFromUri(activity: Activity, uri: Uri, disposable: CompositeDis
 			throw IOException("Value of version is invalid")
 
 		val settings = adapter.fromJsonValue(settingsValue) ?: throw JsonDataException("Failed to parse Settings JSON")
-		Log.i("SerializedSettings", "would import: $settings")
+		// Never log $settings here: it carries rp_key, rp_regist_key and ap_key, the
+		// console credentials, and logcat is not a private place.
 
 		MaterialAlertDialogBuilder(activity)
 			.setMessage(activity.getString(R.string.alert_message_import,
