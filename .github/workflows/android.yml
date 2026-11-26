@@ -108,9 +108,22 @@ jobs:
       - name: Build patches (oboe, nanopb)
         run: bash scripts/prepare-build.sh
 
+      # Robolectric downloads its Android runtime jar from Maven Central on the first
+      # run; without this cache a flaky connection fails the tests before they start.
+      - name: Cache Robolectric
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: robolectric-4.14.1-${{ runner.os }}-${{ hashFiles('android/app/build.gradle') }}
+          restore-keys: robolectric-4.14.1-
+
       - name: Unit tests
         working-directory: android
-        run: ./gradlew testSideapkDebugUnitTest --no-daemon -Dorg.gradle.jvmargs="-Xmx3g"
+        run: |
+          # One retry: the runtime download is the only network dependency here, and
+          # a cold cache plus a bad minute should not fail the build.
+          ./gradlew testSideapkDebugUnitTest --no-daemon -Dorg.gradle.jvmargs="-Xmx3g" \
+            || ./gradlew testSideapkDebugUnitTest --no-daemon -Dorg.gradle.jvmargs="-Xmx3g"
 
       - name: Build
         working-directory: android
