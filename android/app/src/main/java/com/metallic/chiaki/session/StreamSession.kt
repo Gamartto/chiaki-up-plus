@@ -39,7 +39,9 @@ class StreamSession(
 	// arrives after the replacement has been asked for: without this it landed as a
 	// real state change, and the screen closed itself while the new session was
 	// still connecting. Events from a stale generation are dropped.
-	private var generation = 0
+	// Written on the main thread, read from the native session thread: without
+	// @Volatile there is no happens-before edge, so the guard was not guaranteed.
+	@Volatile private var generation = 0
 
 	private val _state = MutableLiveData<StreamState>(StreamStateIdle)
 	val state: LiveData<StreamState> get() = _state
