@@ -301,6 +301,28 @@ class TouchpadView @JvmOverloads constructor(
 					triggerStateChanged()
 				}
 			}
+			MotionEvent.ACTION_CANCEL -> {
+				// The gesture can be taken away mid-drag: a parent intercepts, a dialog
+				// opens, the window loses focus. Without this the pad stayed latched as
+				// pressed in the console and the hold runnable fired later against a
+				// touch that no longer exists.
+				var changed = false
+				for(touch in pointerTouches.values)
+				{
+					removeCallbacks(touch.startButtonHoldRunnable)
+					state.stopTouch(touch.stateId)
+					changed = true
+				}
+				pointerTouches.clear()
+				if(buttonHeld)
+				{
+					buttonHeld = false
+					state.buttons = state.buttons and ControllerState.BUTTON_TOUCHPAD.inv()
+					changed = true
+				}
+				if(changed)
+					triggerStateChanged()
+			}
 			MotionEvent.ACTION_MOVE -> {
 				val changed = pointerTouches.entries.fold(false) { acc, it ->
 					val index = event.findPointerIndex(it.key)
